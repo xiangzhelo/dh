@@ -1,0 +1,95 @@
+<style>
+    .opt_success{
+        border-radius: 5px;
+        background: #76d573;
+        color:#fff;
+        padding: 10px;
+        margin-bottom: 5px;
+    }
+    .opt_success span{
+        margin-right: 10px;
+    }
+    .opt_error{
+        border-radius: 5px;
+        background: #f74d4d;
+        color:#fff;
+        padding: 10px;
+        margin-bottom: 5px;
+    }
+    .opt_error span{
+        margin-right: 10px;
+    }
+    #source_url{
+        margin-top: 10px;
+        width: 900px;
+        height:100px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+</style>
+<div  class="ui container segment">
+    <div class="ui grid">
+        <div class="eight wide column">
+            <span>定时器开关 : </span>
+            <input id="switch" type="hidden" value="<?= $json['switch'] ?>" />
+            <div class="ui buttons">
+                <button class="ui button switch_btn<?php echo $json['switch'] == 1 ? ' blue' : ''; ?>" id="switch1" onclick="btn_switch(1);">开</button>
+                <button class="ui button switch_btn<?php echo $json['switch'] == 0 ? ' blue' : ''; ?>" id="switch0" onclick="btn_switch(0);">关</button>
+            </div>
+        </div>
+        <div class="eight wide column">
+            <span>周期(秒) : </span>
+            <div class="ui input focus">
+                <input type="text" placeholder="3秒" id="time" value="<?= $json['time'] ?>">
+            </div>
+        </div>
+        <div class="eight wide column">
+            <span>每次进程数 : </span>
+            <div class="ui input focus">
+                <input type="text" placeholder="3" id="queueNum" value="<?= $json['queueNum'] ?>">
+            </div>
+        </div>
+        <div class="eight wide column"></div>
+    </div>
+
+    <script>
+        $(function () {
+            $('#time,#queueNum').change(function () {
+                setUpdate();
+            });
+        });
+        var t0 = new Date().getTime();
+        function btn_switch(d) {
+            var t1 = new Date().getTime();
+            if (t1 - t0 < 1000) {
+                return false;
+            }
+            t0 = t1;
+            $('#switch').val(d);
+            $('.switch_btn').removeClass('blue');
+            $('#switch' + d).addClass('blue');
+            setUpdate();
+        }
+        function setUpdate() {
+            var sw = $('#switch').val();
+            var t = $('#time').val();
+            var queueNum = $('#queueNum').val();
+            $.ajax({
+                url: '/setting/setUpdate',
+                type: 'GET',
+                async: false,
+                data: {sw: sw, t: t, queueNum: queueNum},
+                success: function (json) {
+                    console.log(json);
+                    if (json['status'] == 'error') {
+                        alert(json['msg']);
+                    } else {
+                        if (sw == 1 && json['run'] == 0) {
+                            $.get('/setting/queue');
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</div>

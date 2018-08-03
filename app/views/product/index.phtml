@@ -1,0 +1,105 @@
+<style>
+    .draft_btn{
+        margin-left: 10px !important;
+    }
+</style>
+<div  class="ui container segment">
+    <div class="field">
+        <div class="ui five item stackable tabs menu" style="width:600px;margin-top: 15px;">
+            <a class="item <?php echo $status === '' ? 'active' : ''; ?>" href="?status=">全部</a>
+            <a class="item <?php echo $status === '0' ? 'active' : ''; ?>" href="?status=0">未配对</a>
+            <a class="item <?php echo $status === '1' ? 'active' : ''; ?>" href="?status=1">匹配成功</a>
+            <a class="item <?php echo $status === '2' ? 'active' : ''; ?>" href="?status=2">已保存草稿</a>
+            <a class="item <?php echo $status == '200' ? 'active' : ''; ?>" href="?status=200">已上传</a>
+        </div>
+    </div>
+    <table class="ui celled striped table">
+        <thead><tr><th style="text-align: center;width: 200px;">创建时间</th><th style="text-align: center;">图片</th><th style="text-align: center;">标题</th><th style="text-align: center;width: 200px;">状态</th></tr></thead>
+        <tbody>
+            <?php
+            foreach ($pages->items as $item) {
+                $opt = '';
+                if ($item['status'] == 1) {
+                    $opt = '<button class="ui primary button draft_btn" onclick="sub_draft(' . $item['id'] . ');">保存草稿</button>';
+                }
+                echo '<tr aid="' . $item['id'] . '">
+                    <td style="text-align: center;">' . $item['createtime'] . '</td> 
+                    <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank"><img src="' . $item['source_img'] . '" style="height:60px;margin:3px 10px;"/></a></td> 
+                    <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank">' . $item['source_product_name'] . '</a></td> 
+                    <td style="text-align: center;" class="opt_td">' . ($item['status'] == 200 ? '已上传' : ($item['status'] == 2 ? '已保存草稿' : ($item['status'] == 1 ? '匹配成功' : ($item['status'] == 400 ? '放弃' : '未配对')))) . $opt . '</td> 
+                </tr>';
+            }
+            ?>
+        </tbody>
+    </table>
+
+    <div class="ui basic buttons">
+        <span class="ui button"><?php echo "共 ", $pages->all_num, " 条记录 ", $pages->current, " / ", $pages->total_pages, " 页"; ?></span>
+        <?php
+        $base_url = "?";
+        if ($status !== '') {
+            $base_url.='&status=' . $status;
+        }
+        if (!empty($like_words)) {
+            $base_url.='&like_words=' . $like_words;
+        }
+        $first = "<a class='ui button' href='{$base_url}'>首页</a> ";
+        $last = "<a class='ui button' href='{$base_url}&page={$pages->last}'>尾页</a> ";
+        $prev_disable_class = $pages->current <= 1 ? 'disabled' : '';
+        $prev = "<a class='ui button {$prev_disable_class}' href='{$base_url}&page={$pages->before}'>上一页</a> ";
+        $next_disable_class = $pages->current >= $pages->total_pages ? 'disabled' : '';
+        $next = "<a class='ui button {$next_disable_class}' href='{$base_url}&page={$pages->next}'>下一页</a> ";
+        $list_pages = '';
+        //每边显示inum个页码
+        $inum = 3;
+        if ($pages->current - $inum > 1)
+            $list_pages.=" <a class='ui button disabled'>...</a> ";
+        //左边的页码  
+        for ($i = $inum; $i >= 1; $i--) {
+            $p = $pages->current - $i;
+            if ($p < 1) {
+                continue;
+            } else {
+                $list_pages.=" <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
+            }
+        }
+
+        //当前页码  
+        $list_pages.=" <a class='ui button active' href='{$base_url}&page={$pages->current}'>{$pages->current}</a>";
+        //右边页码  
+        for ($i = 1; $i <= $inum; $i++) {
+            $p = $pages->current + $i;
+            if ($p > $pages->total_pages) {
+                break;
+            } else {
+                $list_pages.=" <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
+            }
+        }
+        if ($pages->current + $inum < $pages->total_pages)
+            $list_pages.=" <a class='ui button disabled'>...</a> ";
+        $pages_str = $first . $prev . $list_pages . $next . $last;
+        if ($pages->total_pages > 1) {
+            echo $pages_str;
+        }
+        ?>
+    </div>
+</div>
+<script>
+    function sub_draft(id) {
+        $.ajax({
+            url: '/product/draft',
+            type: 'POST',
+            dataType: 'json',
+            async: false,
+            data: {id: id},
+            success: function (json) {
+                var _this = $('tr[aid=' + id + '] .opt_td');
+                if (json['status'] == 'success') {
+                    _this.html('<span class="success">已保存草稿</span>');
+                } else {
+                    _this.html('<span style="color:red;">保存失败</span>');
+                }
+            }
+        });
+    }
+</script>

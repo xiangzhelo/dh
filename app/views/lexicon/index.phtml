@@ -1,0 +1,225 @@
+<style>
+    .importantWords{
+        margin-left:10px;
+        font-size:6px;
+        font-weight:600;
+        color:red;
+    }
+</style>
+<div  class="ui container segment">
+    <div class="field">
+        <div class="ui three item stackable tabs menu" style="width:400px;margin-top: 15px;">
+            <a class="item <?php echo $status === '' ? 'active' : ''; ?>" href="?status=">全部</a>
+            <a class="item <?php echo $status === '0' ? 'active' : ''; ?>" href="?status=0">未配对</a>
+            <a class="item <?php echo $status == '200' ? 'active' : ''; ?>" href="?status=200">已配对</a>
+        </div>
+    </div>
+    <table class="ui celled striped table">
+        <thead><tr><th style="text-align: center;width: 200px;">创建时间</th><th style="text-align: center;">源词语</th><th style="text-align: center;">目的词语</th><th style="text-align: center;width: 100px;">状态</th></tr></thead>
+        <tbody>
+            <?php
+            foreach ($pages->items as $item) {
+                echo '<tr aid="' . $item['id'] . '">
+                    <td style="text-align: center;">' . $item['createtime'] . '</td> 
+                    <td style="text-align: center;">' . $item['orign_words'] . ($item['is_cate'] == 1 ? '<span class="importantWords">重大</span>' : '') . '</td> 
+                    <td style="text-align: center;" class="dest_words" onclick="getCate(' . $item['id'] . ',\'' . $item['catepubid'] . '\');">' . $item['dest_words'] . '</td> 
+                    <td style="text-align: center;">' . ($item['status'] == 200 ? '已配对' : '未配对') . '</td> 
+                </tr>';
+            }
+            ?>
+        </tbody>
+    </table>
+
+    <div class="ui basic buttons">
+        <span class="ui button"><?php echo "共 ", $pages->all_num, " 条记录 ", $pages->current, " / ", $pages->total_pages, " 页"; ?></span>
+        <?php
+        $base_url = "?";
+        if ($status !== '') {
+            $base_url.='&status=' . $status;
+        }
+        if (!empty($like_words)) {
+            $base_url.='&like_words=' . $like_words;
+        }
+        $first = "<a class='ui button' href='{$base_url}'>首页</a> ";
+        $last = "<a class='ui button' href='{$base_url}&page={$pages->last}'>尾页</a> ";
+        $prev_disable_class = $pages->current <= 1 ? 'disabled' : '';
+        $prev = "<a class='ui button {$prev_disable_class}' href='{$base_url}&page={$pages->before}'>上一页</a> ";
+        $next_disable_class = $pages->current >= $pages->total_pages ? 'disabled' : '';
+        $next = "<a class='ui button {$next_disable_class}' href='{$base_url}&page={$pages->next}'>下一页</a> ";
+        $list_pages = '';
+        //每边显示inum个页码
+        $inum = 3;
+        if ($pages->current - $inum > 1)
+            $list_pages.=" <a class='ui button disabled'>...</a> ";
+        //左边的页码  
+        for ($i = $inum; $i >= 1; $i--) {
+            $p = $pages->current - $i;
+            if ($p < 1) {
+                continue;
+            } else {
+                $list_pages.=" <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
+            }
+        }
+
+        //当前页码  
+        $list_pages.=" <a class='ui button active' href='{$base_url}&page={$pages->current}'>{$pages->current}</a>";
+        //右边页码  
+        for ($i = 1; $i <= $inum; $i++) {
+            $p = $pages->current + $i;
+            if ($p > $pages->total_pages) {
+                break;
+            } else {
+                $list_pages.=" <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
+            }
+        }
+        if ($pages->current + $inum < $pages->total_pages)
+            $list_pages.=" <a class='ui button disabled'>...</a> ";
+        $pages_str = $first . $prev . $list_pages . $next . $last;
+        if ($pages->total_pages > 1) {
+            echo $pages_str;
+        }
+        ?>
+    </div>
+</div>
+<div id="select_table" style="display:none;">
+    <div id="optContents"></div>
+    <div id="contents">
+    </div>
+</div>
+<style>
+    #search_input{
+        width: 200px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size:10px;
+    }
+    #select_table{
+        /*text-align: center;*/
+        width: 100%;
+        position: fixed;
+        height: 400px;
+        overflow: scroll;
+        bottom: 0px;
+        left: 0px;
+        background: #fffaf4;
+        /*font-size: 10px;*/
+    }
+    #optContents{
+        width: 1110px;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        margin-top: 10px;
+        text-align: right;
+    }
+    #contents{
+        width: 1110px;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    #select_table .column{
+        padding: 0;
+    }
+    #select_table .column div{
+        border: 1px solid #e9dbc9d4;
+        padding:10px 10px;
+        margin: 5px 8px;
+        border-radius: 5px;
+    }
+    .spanTitle{
+        width: 100px;
+        display: inline-block;
+        vertical-align: top;
+    }
+    .divItem{
+        margin-bottom: 10px;
+        width: 1110px;
+    }
+    .spanUl{
+        display: inline-block;
+        width: 1000px;
+        margin-left: 10px;
+    }
+    .spanLi{
+        display: inline-block;
+        width:100px;
+        vertical-align: top;
+    }
+</style>
+<script>
+    function getCate(id, catePubId) {
+        var text = $('tr[aid=' + id + ']').find('td').eq(1).text();
+        var cate = text.split(':');
+        $('#optContents').html('<span style="float:left;">内容转换【' + text + '】</span><button onclick="btnCancel();">取消</button>');
+        var html = '<span class="cateSpan infoSpan">';
+        $.ajax({
+            url: '/product/getCateAttrL',
+            type: 'GET',
+            dataType: 'json',
+            data: {catePubId: catePubId},
+            async: false,
+            success: function (json) {
+                $("html,body").animate({scrollTop: ($('tr[aid=' + id + ']').offset().top - 60)}, 500);
+                if (json['data']['attributeList'].length > 0) {
+                    $.each(json['data']['attributeList'], function (k, v) {
+                        html += '<div class="divItem">';
+                        html += '<div class="divItem"><span class="spanTitle">适用 ：</span><span class="spanUl"><span class="spanLi"><input type="checkbox" class="infoJsonCheck"  value="适用:men">男士</span><span class="spanLi"><input type="checkbox" class="infoJsonCheck" name="Contrast Color" value="适用:women">女士</span><span class="spanLi"><input type="checkbox" class="infoJsonCheck" name="Contrast Color" value="适用:成人">成人</span><span class="spanLi"><input type="checkbox" class="infoJsonCheck" name="Contrast Color" value="适用:非成人">非成人</span></span></div>';
+                        if (v['isother'] == '0') {
+                            if (v['valueList'] != null && v['valueList'] != '' && v['valueList'].length > 0) {
+                                html += '<span class="spanTitle">' + v['lineAttrNameCn'] + ' ：</span><span class="spanUl">';
+                                $.each(v['valueList'], function (k1, v1) {
+                                    html += '<span class="spanLi"><input type="radio" class="infoJsonCheck" name="' + v['lineAttrName'] + '" value="' + (v['lineAttrNameCn'] + ':' + v1['lineAttrvalNameCn']) + '" />' + v1['lineAttrvalNameCn'] + '</span>';
+                                });
+                                html += '<span class="spanLi"><input type="radio" class="infoJsonCheck" name="' + v['lineAttrName'] + '" value="' + v['lineAttrNameCn'] + ':自定义|' + cate + '" /><input style="width:60px;" onchange="$(this).prev().val(\'' + v['lineAttrNameCn'] + ':自定义|\'+$(this).val());" /></span>';
+                                html += '</span>';
+                            }
+                        } else {
+                            if (v['valueList'] != null && v['valueList'] != '' && v['valueList'].length > 0) {
+                                html += '<span class="spanTitle">' + v['lineAttrNameCn'] + ' ：</span><span class="spanUl">';
+                                $.each(v['valueList'], function (k1, v1) {
+                                    html += '<span class="spanLi"><input type="checkbox" class="infoJsonCheck" name="' + v1['lineAttrvalName'] + '" value="' + (v['lineAttrNameCn'] + ':' + v1['lineAttrvalNameCn']) + '" />' + v1['lineAttrvalNameCn'] + '</span>';
+                                });
+                                html += '<span class="spanLi"><input type="checkbox" class="infoJsonCheck" value="' + v['lineAttrNameCn'] + ':自定义|' + cate + '" /><input style="width:60px;" onchange="$(this).prev().val(\'' + v['lineAttrNameCn'] + ':自定义|\'+$(this).val());" /></span>';
+                                html += '</span>';
+                            }
+                        }
+                        html += '</div>';
+                    });
+                }
+            }
+        });
+        html += '</span><span class="cateSpan"><button onclick="sub_catePub(' + id + ')">确定</button>&nbsp;&nbsp;&nbsp;<button onclick="btnCancel();">取消</button></span>';
+        $('#optContents').append('&nbsp;&nbsp;&nbsp;<button onclick="sub_catePub(' + id + ')">确定</button>');
+        $('#contents').html(html);
+        $('#select_table').show();
+    }
+    function sub_catePub(id) {
+        var infoJson = '';
+        $('.infoJsonCheck:checked').each(function () {
+            if (infoJson == '') {
+                infoJson += $(this).val();
+            } else {
+                infoJson += ',' + $(this).val();
+            }
+        });
+        $.ajax({
+            url: '/lexicon/update',
+            type: 'GET',
+            dataType: 'json',
+            data: {id: id, dest_words: infoJson},
+            async: false,
+            success: function (json) {
+                if (json['status'] == 'success') {
+                    $('tr[aid=' + id + ']').find('td').eq(2).text(infoJson);
+                    $('tr[aid=' + id + ']').find('td').eq(3).text('成功匹配');
+                } else {
+                    alert(json['msg']);
+                }
+            }
+        });
+        $('#select_table').hide();
+    }
+    function btnCancel() {
+        $('#select_table').hide();
+    }
+</script>
