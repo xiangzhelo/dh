@@ -23,7 +23,7 @@ class ControllerBase extends Controller {
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HEADER, 0);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $cookie = @file_get_contents(PUL_PATH . $username . '_cookie.txt');
+        $cookie = @file_get_contents(PUL_PATH . 'cookies/' . $username . '_cookie.txt');
         if (!empty($cookie)) {
             curl_setopt($ch, CURLOPT_COOKIE, $cookie);
         }
@@ -42,7 +42,7 @@ class ControllerBase extends Controller {
     }
 
     protected function getUserCookie($username) {
-        $cookie = file_get_contents(PUL_PATH . $username . '_cookie.txt');
+        $cookie = file_get_contents(PUL_PATH . 'cookies/' . $username . '_cookie.txt');
         return $cookie;
     }
 
@@ -80,7 +80,7 @@ class ControllerBase extends Controller {
         }
         $url = CommonFun::getLocation($header1);
         $this->getUrl($url, $cookie);
-        @file_put_contents(PUL_PATH . $username . '_cookie.txt', $cookie);
+        @file_put_contents(PUL_PATH . 'cookies/' . $username . '_cookie.txt', $cookie);
         return true;
     }
 
