@@ -166,17 +166,44 @@ class LexiconController extends ControllerBase {
     public function addNeedWords($key, $value, $source_product_id, &$tran_product_data, $catepubid) {
         $key = preg_replace('/(\s+)(\d+)$/', '', $key);
         $key = trim($key);
-        if (in_array($key, ['model number', 'size', 'color', 'cn size', 'european size', 'eur size', 'euro size', 'size euro', 'colors', 'shoes size'])) {
+        $key = trim($key, '-');
+        $key = preg_replace('/\d+$/', '', $key);
+        if (in_array($key, ['brand name', 'model number', 'size', 'color', 'cn size', 'european size', 'eur size', 'euro size', 'size euro', 'colors', 'shoes size'])) {
             return;
         }
+        if (is_string($value) && preg_match('/^[\d|,|，|\.]+$/', $value)) {
+            return;
+        }
+        if (is_string($value) && (strpos($value, ',') !== false || strpos($value, '，') !== false)) {
+            $value = str_replace('，', ',', $value);
+            $value = explode(',', $value);
+        }
+        if (is_string($value) && $key == 'gender') {
+            if (preg_match('/^men/', $value) || preg_match('/\smen/', $value) || preg_match('/^male/', $value) || preg_match('/\smale/', $value) || preg_match('/^man/', $value) || preg_match('/\sman/', $value)) {
+                $value = 'men';
+            }
+            if (strpos($value, 'women') !== false || strpos($value, 'woman') !== false || strpos($value, 'female') !== false) {
+                $value = 'women';
+            }
+        }
         if (is_string($value)) {
-            $str = $key . ':' . $value;
-            $wordModel = \Words::findFirst([
-                        'conditions' => 'orign_words=:orign_words:',
-                        'bind' => [
-                            'orign_words' => $str
-                        ]
-            ]);
+            if (empty($key) || preg_match('/^\d+$/', $key) || $key == 'type' || $key == 'style' || $key == 'function' || $key == 'feature' || $key == 'key word-') {
+                $str = ':' . trim($value);
+                $wordModel = \Words::findFirst([
+                            'conditions' => 'orign_words like :orign_words:',
+                            'bind' => [
+                                'orign_words' => '%' . $str
+                            ]
+                ]);
+            } else {
+                $str = $key . ':' . trim($value);
+                $wordModel = \Words::findFirst([
+                            'conditions' => 'orign_words=:orign_words:',
+                            'bind' => [
+                                'orign_words' => $str
+                            ]
+                ]);
+            }
             if ($wordModel == false || $wordModel->status != 200) {
                 $needWorsModel = new \NeedWords();
                 $needWorsModel->source_product_id = $source_product_id;

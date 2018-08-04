@@ -53,6 +53,7 @@ class SettingController extends ControllerBase {
 
     public function queueAction() {
         set_time_limit(0);
+        ini_set('max_execution_time', '0');
         ignore_user_abort();
         $file = APP_PATH . 'config/setting.json';
         $json = json_decode(file_get_contents($file), true);
