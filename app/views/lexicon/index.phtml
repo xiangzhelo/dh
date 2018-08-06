@@ -23,7 +23,7 @@
                     <td style="text-align: center;">' . $item['createtime'] . '</td> 
                     <td style="text-align: center;">' . $item['orign_words'] . ($item['is_cate'] == 1 ? '<span class="importantWords">重大</span>' : '') . '</td> 
                     <td style="text-align: center;" class="dest_words" onclick="getCate(' . $item['id'] . ',\'' . $item['catepubid'] . '\');">' . $item['dest_words'] . '</td> 
-                    <td style="text-align: center;">' . ($item['status'] == 200 ? '已配对' : '未配对') . '</td> 
+                    <td style="text-align: center;">' . ($item['status'] == 200 ? '已配对' : ($item['status'] == 400 ? '放弃' : '未配对')) . '</td> 
                 </tr>';
             }
             ?>
@@ -150,7 +150,7 @@
     function getCate(id, catePubId) {
         var text = $('tr[aid=' + id + ']').find('td').eq(1).text();
         var cate = text.split(':');
-        $('#optContents').html('<span style="float:left;">内容转换【' + text + '】</span><button onclick="btnCancel();">取消</button>');
+        $('#optContents').html('<span style="float:left;">内容转换【' + text + '】</span><button onclick="btnCancel();">取消</button>&nbsp;&nbsp;&nbsp;<button onclick="giveUpWordsBtn(' + id + ');">放弃</button>&nbsp;&nbsp;&nbsp;<button onclick="giveUpWordsKeyBtn(' + id + ');">放弃整个类</button>');
         var html = '<span class="cateSpan infoSpan">';
         $.ajax({
             url: '/product/getCateAttrL',
@@ -188,10 +188,61 @@
                 }
             }
         });
-        html += '</span><span class="cateSpan"><button onclick="sub_catePub(' + id + ')">确定</button>&nbsp;&nbsp;&nbsp;<button onclick="btnCancel();">取消</button></span>';
+        html += '</span><span class="cateSpan"><button onclick="sub_catePub(' + id + ')">确定</button>&nbsp;&nbsp;&nbsp;<button onclick="btnCancel();">取消</button>&nbsp;&nbsp;&nbsp;<button onclick="giveUpWordsBtn(' + id + ');">放弃</button></span>&nbsp;&nbsp;&nbsp;<button onclick="giveUpWordsKeyBtn(' + id + ');">放弃整个类</button>';
         $('#optContents').append('&nbsp;&nbsp;&nbsp;<button onclick="sub_catePub(' + id + ')">确定</button>');
         $('#contents').html(html);
         $('#select_table').show();
+    }
+
+    function giveUpWordsKeyBtn(id) {
+        if ($('tr[aid=' + id + ']').length > 0) {
+            var text = $('tr[aid=' + id + ']').find('td').eq(1).text();
+            var arr = text.split(':');
+            console.log(arr);
+            if (confirm('确定放弃所有的key【' + arr[0] + '】') == false) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+        $.ajax({
+            url: '/lexicon/giveUpWordsKey',
+            type: 'GET',
+            dataType: 'json',
+            data: {id: id},
+            async: false,
+            success: function (json) {
+                if (json['status'] == 'success') {
+                    $.each(json['data']['ids'], function (k, v) {
+                        if ($('tr[aid=' + v + ']').length > 0) {
+                            $('tr[aid=' + v + ']').find('td').eq(2).text('放弃');
+                            $('tr[aid=' + v + ']').find('td').eq(3).text('放弃');
+                        }
+                    });
+                } else {
+                    alert(json['msg']);
+                }
+            }
+        });
+        $('#select_table').hide();
+    }
+    function giveUpWordsBtn(id) {
+        $.ajax({
+            url: '/lexicon/giveUpWords',
+            type: 'GET',
+            dataType: 'json',
+            data: {id: id},
+            async: false,
+            success: function (json) {
+                if (json['status'] == 'success') {
+                    $('tr[aid=' + id + ']').find('td').eq(2).text('放弃');
+                    $('tr[aid=' + id + ']').find('td').eq(3).text('放弃');
+                } else {
+                    alert(json['msg']);
+                }
+            }
+        });
+        $('#select_table').hide();
     }
     function sub_catePub(id) {
         var infoJson = '';

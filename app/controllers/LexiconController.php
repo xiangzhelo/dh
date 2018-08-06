@@ -81,6 +81,65 @@ class LexiconController extends ControllerBase {
         }
     }
 
+    public function giveUpWordsAction() {
+        $id = $this->request->get('id', 'int');
+        $model = \Words::findFirst($id);
+        if ($model == false) {
+            $this->echoJson(['status' => 'error', 'msg' => '未找到该字库']);
+        } else {
+            $model->dest_words = '放弃';
+            $model->dh_category_id = '';
+            $model->status = 400;
+            $model->save();
+            $needList = \NeedWords::find([
+                        'conditions' => 'words=:words: and is_cate=0 and status=0',
+                        'bind' => [
+                            'words' => $model->orign_words
+                        ]
+            ]);
+            foreach ($needList as $item) {
+                $item->status = 400;
+                $item->save();
+            }
+            $this->echoJson(['status' => 'success', 'msg' => '保存成功']);
+        }
+    }
+
+    public function giveUpWordsKeyAction() {
+        $id = $this->request->get('id', 'int');
+        $model = \Words::findFirst($id);
+        if ($model == false) {
+            $this->echoJson(['status' => 'error', 'msg' => '未找到该字库']);
+        } else {
+            $arr = explode(':', $model->orign_words);
+            if (isset($arr[0]) && !empty($arr[0])) {
+                $words = \Words::find([
+                            'conditions' => 'orign_words like :key: and is_cate=0 and status=0',
+                            'bind' => [
+                                'key' => $arr[0] . ':%'
+                            ],
+                            'columns' => 'id'
+                        ])->toArray();
+                if (empty($words)) {
+                    $this->echoJson(['status' => 'error', 'msg' => '未找到该字库']);
+                }
+                $mcurl = new Mcurl();
+                $mcurl->maxThread = 3;
+                $mcurl->maxTry = 0;
+                $num = 0;
+                $ids = [];
+                foreach ($words as $item) {
+                    $url = 'http://www.dh.com/lexicon/giveUpWords?id=' . $item['id'];
+                    $mcurl->add(['url' => $url, 'args' => ['id' => $item['id']]]);
+                    $num++;
+                    $ids[] = $item['id'];
+                }
+                $mcurl->start();
+                $this->echoJson(['status' => 'success', 'msg' => '处理成功', 'data' => ['ids' => $ids]]);
+            }
+        }
+    }
+
     public function giveUpCateAction() {
         $id = $this->request->get('id', 'int');
         $model = \Categories::findFirst($id);
@@ -171,24 +230,30 @@ class LexiconController extends ControllerBase {
         if (in_array($key, ['brand name', 'model number', 'size', 'color', 'cn size', 'european size', 'eur size', 'euro size', 'size euro', 'colors', 'shoes size'])) {
             return;
         }
-        if (is_string($value) && preg_match('/^[\d|,|，|\.]+$/', $value)) {
-            return;
-        }
-        if (is_string($value) && (strpos($value, ',') !== false || strpos($value, '，') !== false)) {
-            $value = str_replace('，', ',', $value);
-            $value = explode(',', $value);
-        }
-        if (is_string($value) && $key == 'gender') {
-            if (preg_match('/^men/', $value) || preg_match('/\smen/', $value) || preg_match('/^male/', $value) || preg_match('/\smale/', $value) || preg_match('/^man/', $value) || preg_match('/\sman/', $value)) {
-                $value = 'men';
+        if (is_string($value)) {
+            if (preg_match('/^[\d|,|，|\.]+$/', $value)) {
+                return;
             }
-            if (strpos($value, 'women') !== false || strpos($value, 'woman') !== false || strpos($value, 'female') !== false) {
-                $value = 'women';
+            if ($key == 'gender') {
+                if (preg_match('/^men/', $value) || preg_match('/\smen/', $value) || preg_match('/^male/', $value) || preg_match('/\smale/', $value) || preg_match('/^man/', $value) || preg_match('/\sman/', $value)) {
+                    $value = 'men';
+                }
+                if (strpos($value, 'women') !== false || strpos($value, 'woman') !== false || strpos($value, 'female') !== false) {
+                    $value = 'women';
+                }
+            }
+            if (strpos($value, ',') !== false || strpos($value, '，') !== false) {
+                $value = str_replace('，', ',', $value);
+                $value = explode(',', $value);
             }
         }
         if (is_string($value)) {
+            $value = trim($value);
+            if (empty($value)) {
+                return;
+            }
             if (empty($key) || preg_match('/^\d+$/', $key) || $key == 'type' || $key == 'style' || $key == 'function' || $key == 'feature' || $key == 'key word-') {
-                $str = ':' . trim($value);
+                $str = ':' . $value;
                 $wordModel = \Words::findFirst([
                             'conditions' => 'orign_words like :orign_words:',
                             'bind' => [
@@ -196,7 +261,7 @@ class LexiconController extends ControllerBase {
                             ]
                 ]);
             } else {
-                $str = $key . ':' . trim($value);
+                $str = $key . ':' . $value;
                 $wordModel = \Words::findFirst([
                             'conditions' => 'orign_words=:orign_words:',
                             'bind' => [
