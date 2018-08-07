@@ -16,6 +16,8 @@ class CollectionController extends ControllerBase {
     }
 
     public function handAction() {
+        error_reporting(-1);
+        ini_set('display_errors', 1);
         $source_url = $this->request->get('source_url', 'string');
         $len = strpos($source_url, '?');
         if ($len > 0) {
@@ -97,7 +99,7 @@ class CollectionController extends ControllerBase {
                 }
             }
             if ($model == true) {
-                $this->echoJson(['status' => 'success', 'msg' => '采集成功', 'data' => ['product_data' => $data, 'item' => $model->toArray()]]);
+                $this->echoJson(['status' => 'success', 'msg' => '采集成功']); //, 'data' => ['product_data' => $data, 'item' => $model->toArray()]
             }
         }
         $this->echoJson(['status' => 'error', 'msg' => '采集失败,' . $data, 'data' => ['source_url' => $source_url]]);

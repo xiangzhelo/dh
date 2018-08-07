@@ -4,6 +4,7 @@ namespace Dh\Controllers;
 
 use Lib\Vendor\Mcurl;
 use Lib\Vendor\BaiduFun;
+use Lib\Vendor\CommonFun;
 
 class LexiconController extends ControllerBase {
 
@@ -18,11 +19,13 @@ class LexiconController extends ControllerBase {
         $page = $this->request->get('page', 'int', 1);
         $status = $this->request->get('status', 'string', '');
         $like_words = $this->request->get('like_words', 'string', '');
+        $important = $this->request->get('important', 'string', '');
         $size = 100;
-        $pages = \Words::getPage($page, $size, $like_words, $status);
+        $pages = \Words::getPage($page, $size, $like_words, $status, $important);
         $this->view->pages = $pages;
         $this->view->page = $page;
         $this->view->status = $status;
+        $this->view->important = $important;
         $this->view->like_words = $like_words;
     }
 
@@ -206,12 +209,33 @@ class LexiconController extends ControllerBase {
         $tran_product_data = $this->mergeArr($product_data, $categoryModel->info_json);
         $tran_product_data['分类id'] = $categoryModel->dh_category_id;
         $tran_product_data['分类名称'] = $categoryModel->dest_category;
+        $needJson = json_decode(file_get_contents('http://www.dh.com/product/getCateAttrL?catePubId=' . $categoryModel->dh_category_id), true);
+        if (!empty($needJson['data']['attributeList'])) {
+            $needJson = CommonFun::arrayColumns($needJson['data']['attributeList'], null, 'lineAttrName');
+        }
         foreach ($product_data as $key => $value) {
             if (preg_match('/[\x7f-\xff]/', $key)) {
                 continue;
             }
-            $this->addNeedWords($key, $value, $product->source_product_id, $tran_product_data, $tran_product_data['分类id']);
+            $this->addNeedWords($key, $value, $product->source_product_id, $tran_product_data, $tran_product_data['分类id'], $needJson);
         }
+        $needArr = [];
+        $n = 0;
+        foreach ($needJson as $v) {
+            if (in_array($v['lineAttrNameCn'], ['颜色', '尺码'])) {
+                continue;
+            }
+            $needArr[$n] = [
+                'need_key' => $v['lineAttrNameCn'],
+                'required' => $v['required'],
+                'is_exist' => '0'
+            ];
+            if (isset($tran_product_data[$v['lineAttrNameCn']])) {
+                $needArr[$n]['is_exist'] = '1';
+            }
+            $n++;
+        }
+        $tran_product_data['需要匹配'] = $needArr;
         $product->tran_product_data = json_encode($tran_product_data, JSON_UNESCAPED_UNICODE);
         $product->dh_category_id = $categoryModel->dh_category_id;
         $product->status = 1;
@@ -222,7 +246,7 @@ class LexiconController extends ControllerBase {
         exit();
     }
 
-    public function addNeedWords($key, $value, $source_product_id, &$tran_product_data, $catepubid) {
+    public function addNeedWords($key, $value, $source_product_id, &$tran_product_data, $catepubid, $needJson) {
         $key = preg_replace('/(\s+)(\d+)$/', '', $key);
         $key = trim($key);
         $key = trim($key, '-');
@@ -242,17 +266,27 @@ class LexiconController extends ControllerBase {
                     $value = 'women';
                 }
             }
-            if (strpos($value, ',') !== false || strpos($value, '，') !== false) {
+            if (strpos($value, '(') === false && (strpos($value, ',') !== false || strpos($value, '，') !== false)) {
                 $value = str_replace('，', ',', $value);
                 $value = explode(',', $value);
             }
         }
+        $important = 3;
+        $dest_words = '';
         if (is_string($value)) {
             $value = trim($value);
             if (empty($value)) {
                 return;
             }
-            if (empty($key) || preg_match('/^\d+$/', $key) || $key == 'type' || $key == 'style' || $key == 'function' || $key == 'feature' || $key == 'key word-') {
+            if (!empty($key) && isset($needJson[$key])) {
+                foreach ($needJson[$key]['valueList'] as $v) {
+                    if (strtolower($v['lineAttrvalName']) == $value) {
+                        $dest_words = $needJson[$key]['lineAttrNameCn'] . ':' . $v['lineAttrvalNameCn'];
+                        $tran_product_data = $this->mergeArr($tran_product_data, $dest_words);
+                    }
+                }
+            }
+            if (empty($key) || preg_match('/^\d+$/', $key) || $key == 'type' || $key == 'style' || $key == 'function' || $key == 'feature' || $key == 'key word-' || $key == 'features') {
                 $str = ':' . $value;
                 $wordModel = \Words::findFirst([
                             'conditions' => 'orign_words like :orign_words:',
@@ -260,6 +294,9 @@ class LexiconController extends ControllerBase {
                                 'orign_words' => '%' . $str
                             ]
                 ]);
+                if (strlen($str) < 20) {
+                    $important = 2;
+                }
             } else {
                 $str = $key . ':' . $value;
                 $wordModel = \Words::findFirst([
@@ -268,31 +305,55 @@ class LexiconController extends ControllerBase {
                                 'orign_words' => $str
                             ]
                 ]);
+                if (strlen($str) < 30) {
+                    $important = 2;
+                }
+            }
+            if ($wordModel != false) {
+                $nCount = \NeedWords::count([
+                            'conditions' => 'words=:words:',
+                            'bind' => [
+                                'words' => $wordModel->orign_words
+                            ],
+                            'column' => 'DISTINCT source_product_id'
+                ]);
+                if ($nCount > 10) {
+                    $important = 0;
+                } else if ($important == 2 && $nCount > 3) {
+                    $important = 1;
+                }
             }
             if ($wordModel == false || $wordModel->status != 200) {
                 $needWorsModel = new \NeedWords();
                 $needWorsModel->source_product_id = $source_product_id;
                 $needWorsModel->words = $str;
                 $needWorsModel->is_cate = 0;
-                $needWorsModel->status = 0;
+                $needWorsModel->status = empty($dest_words) ? 0 : 200;
                 $needWorsModel->createtime = date('Y-m-d H:i:s');
                 $needWorsModel->save();
             }
             if ($wordModel == false) {
                 $wordModel = new \Words();
                 $wordModel->orign_words = $str;
-                $wordModel->status = 0;
+                $wordModel->dest_words = $dest_words;
+                $wordModel->is_cate = 0;
+                $wordModel->important = $important;
+                $wordModel->status = empty($dest_words) ? 0 : 200;
                 $wordModel->source_product_id = $source_product_id;
                 $wordModel->createtime = date('Y-m-d H:i:s');
                 $wordModel->catepubid = $catepubid;
                 $wordModel->save();
             } else if ($wordModel->status == 200) {
                 $tran_product_data = $this->mergeArr($tran_product_data, $wordModel->dest_words);
+            } else {
+                $wordModel->dest_words = $dest_words;
+                $wordModel->status = empty($dest_words) ? $wordModel->status : 200;
+                $wordModel->save();
             }
         } else {
             if (is_array($value)) {
                 foreach ($value as $v) {
-                    $this->addNeedWords($key, $v, $source_product_id, $tran_product_data, $catepubid);
+                    $this->addNeedWords($key, $v, $source_product_id, $tran_product_data, $catepubid, $needJson);
                 }
             }
         }
@@ -596,6 +657,71 @@ class LexiconController extends ControllerBase {
 //        $arr = \Lib\Vendor\CommonFun::getJsJson($html, 'window.pageConfig');
         echo $arr[1];
         exit();
+    }
+
+    public function t4Action() {
+        set_time_limit(0);
+        $list = \Words::find();
+        foreach ($list as $item) {
+            $important = 3;
+            if (strpos($item->orign_words, ':') > 0) {
+                if (strlen($item->orign_words) < 30) {
+                    $important = 2;
+                }
+            } else {
+                if (strlen($item->orign_words) < 30) {
+                    $important = 2;
+                }
+            }
+            $nCount = \NeedWords::count([
+                        'conditions' => 'words=:words:',
+                        'bind' => [
+                            'words' => $item->orign_words
+                        ],
+                        'column' => 'DISTINCT source_product_id'
+            ]);
+            if ($nCount > 10) {
+                $important = 0;
+            } else if ($important == 2 && $nCount > 3) {
+                $important = 1;
+            }
+            $item->important = $important;
+            $item->save();
+        }
+        echo 'success';
+        exit();
+    }
+
+    public function t5Action() {
+        set_time_limit(0);
+        $list = \Categories::find();
+        foreach ($list as $item) {
+            $nCount = \NeedWords::count([
+                        'conditions' => 'words=:words:',
+                        'bind' => [
+                            'words' => $item->orign_category
+                        ]
+            ]);
+            if ($nCount == 0) {
+                $item->status = 400;
+                $item->save();
+            }
+        }
+        echo 'success';
+        exit();
+    }
+
+    public function t6Action() {
+        $list = \Product::find();
+        foreach ($list as $item) {
+            $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
+            $queue = new \Queue();
+            $queue->queue_url = $queueUrl;
+            $queue->status = 0;
+            $queue->createtime = date('Y-m-d H:i:s');
+            $queue->contents = '分类匹配成功,产品属性匹配';
+            $queue->save();
+        }
     }
 
 }

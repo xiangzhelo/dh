@@ -28,7 +28,7 @@ class SettingController extends ControllerBase {
         $sw = $this->request->get('sw', 'int', '0');
         $t = $this->request->get('t', 'int', '3');
         $queueNum = $this->request->get('queueNum', 'int', '3');
-        if (($sw == 1 || $sw == 0) && $t > 1 && $queueNum > 0) {
+        if (($sw == 1 || $sw == 0) && $t > 0 && $t < 60 && $queueNum > 0 && $queueNum < 8) {
             $file = APP_PATH . 'config/setting.json';
             if (file_exists($file)) {
                 $json = json_decode(file_get_contents($file), true);
@@ -73,28 +73,57 @@ class SettingController extends ControllerBase {
     }
 
     public function queue($qnum) {
-        $queues = \Queue::find([
-                    'conditions' => 'status=0',
-                    'order' => 'id asc',
-                    'limit' => $qnum
-        ]);
-        $mcurl = new \Lib\Vendor\Mcurl();
-        $mcurl->maxThread = $qnum;
-        $mcurl->maxTry = 0;
-        $num = 0;
-        foreach ($queues as $item) {
-            $url = $item->queue_url;
-            $mcurl->add(['url' => $url, 'args' => ['id' => $item->id]], [$this, 'queueCallBack']);
-            $num++;
+        try {
+            $queues = \Queue::find([
+                        'conditions' => 'status=0 or status=400',
+                        'order' => 'status asc,id asc',
+                        'limit' => $qnum
+            ]);
+            if ($queues == false) {
+                return;
+            }
+            $mcurl = new \Lib\Vendor\Mcurl();
+            $mcurl->maxThread = $qnum;
+            $mcurl->maxTry = 0;
+            $num = 0;
+            foreach ($queues as $item) {
+                if ($item->status == 0) {
+                    $item->status = 1;
+                } else if ($item->status == 400) {
+                    $item->status = 401;
+                } else {
+                    continue;
+                }
+                $item->save();
+                $url = $item->queue_url;
+                $mcurl->add(['url' => $url, 'args' => ['id' => $item->id]], [$this, 'queueCallBack']);
+                $num++;
+            }
+            if ($num > 0) {
+                $mcurl->start();
+            }
+        } catch (Exception $e) {
+            \Log::createOne('错误：' . $e->getMessage(), 'error');
+            return false;
         }
-        $mcurl->start();
     }
 
     public function queueCallBack($res, $args) {
-        $queue = \Queue::findFirst($args['id']);
-        $queue->status = 200;
-        $queue->save();
-        \Log::createOne('URL:' . $queue->queue_url . ',返回:' . $res['content'], 'queue');
+        if (json_decode($res['content'], true)['status'] == 'success') {
+            $queue = \Queue::findFirst($args['id']);
+            $queue->status = 200;
+            $queue->save();
+            \Log::createOne('URL:' . $queue->queue_url . ',返回:' . $res['content'], 'queue');
+        } else {
+            $queue = \Queue::findFirst($args['id']);
+            if ($queue->status == 401) {
+                $queue->status = 402;
+            } else {
+                $queue->status = 400;
+            }
+            $queue->save();
+            \Log::createOne('URL:' . $queue->queue_url . ',返回:' . $res['content'], 'queue');
+        }
     }
 
 }

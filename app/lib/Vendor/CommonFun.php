@@ -66,10 +66,21 @@ class CommonFun {
         return $data;
     }
 
+    public static function Rand_IP() {
+        $ip2id = round(rand(600000, 2550000) / 10000); //第一种方法，直接生成
+        $ip3id = round(rand(600000, 2550000) / 10000);
+        $ip4id = round(rand(600000, 2550000) / 10000);
+        //下面是第二种方法，在以下数据中随机抽取
+        $arr_1 = array("218", "218", "66", "66", "218", "218", "60", "60", "202", "204", "66", "66", "66", "59", "61", "60", "222", "221", "66", "59", "60", "60", "66", "218", "218", "62", "63", "64", "66", "66", "122", "211");
+        $randarr = mt_rand(0, count($arr_1) - 1);
+        $ip1id = $arr_1[$randarr];
+        return $ip1id . "." . $ip2id . "." . $ip3id . "." . $ip4id;
+    }
+
     public static function hand($url) {
         try {
             $curl = new Curl();
-            $contents = $curl->get($url);
+            $contents = $curl->get($url, ['X-FORWARDED-FOR:' . self::Rand_IP(), 'CLIENT-IP:' . self::Rand_IP()]);
             if ($contents == false) {
                 throw new Exception('错误');
             }
@@ -98,13 +109,13 @@ class CommonFun {
                 $id = $a->getAttribute('data-sku-id');
                 $colorList[$id] = [
                     '颜色' => strtolower(str_replace(' ', '', $a->title)),
-                    '图片' => $a->find('img', 0)->bigpic,
+                    '图片' => empty($a->find('img')) ? '' : $a->find('img', 0)->bigpic,
                     '颜色id' => $id,
                 ];
             }
             foreach ($html->find('#j-product-info-sku #j-sku-list-2 a') as $a) {
                 $id = $a->getAttribute('data-sku-id');
-                $sizes[$id] = $a->find('span', 0)->plaintext;
+                $sizes[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;
             }
             $skuAttr = self::getJsJson($contents, 'skuAttrIds');
             $skuProducts = self::getJsJson($contents, 'skuProducts');
@@ -125,7 +136,7 @@ class CommonFun {
                     $attribute[$num]['尺码'] = trim($sizes[$v1], ' ');
                     $attribute[$num]['可用量'] = $info['skuVal']['availQuantity'];
                     $attribute[$num]['库存'] = $info['skuVal']['inventory'];
-                    $attribute[$num]['折扣价'] = $info['skuVal']['actSkuCalPrice'];
+                    $attribute[$num]['折扣价'] = isset($info['skuVal']['actSkuCalPrice']) ? $info['skuVal']['actSkuCalPrice'] : $info['skuVal']['skuCalPrice'];
                     $attribute[$num]['原价'] = $info['skuVal']['skuCalPrice'];
                     $num++;
                 }
@@ -162,121 +173,8 @@ class CommonFun {
                 $data['产品图片'][] = substr($str, 0, strrpos($str, '_50x50.jpg'));
             }
             $html->clear();
-//            $words = array_values(array_merge($needMatchList, array_keys($needMatchList), $data['分类'], array_keys($data['分类'])));
-//            $wordsList = \Words::find([
-//                        'conditions' => 'orign_words in ({orign_words:array})',
-//                        'bind' => [
-//                            'orign_words' => $words
-//                        ],
-//                        'columns' => 'orign_words,dest_words,status'
-//                    ])->toArray();
-//            if (!empty($wordsList)) {
-//                $wordsList = array_column($wordsList, null, 'orign_words');
-//            }
             $insertSql = '';
             $data['匹配情况'] = '未匹配';
-//            $needList = [];
-//            foreach ($needMatchList as $key => $value) {
-//                if (!is_numeric($value) && !in_array($value, $needList)) {
-//                    if (isset($wordsList[$value])) {
-//                        if ($wordsList[$value]['status'] == '200') {
-//                            $data[$key] = $wordsList[$value]['dest_words'];
-//                        } else {
-//                            $data['匹配情况'] = '未匹配';
-//                        }
-//                    } else {
-//                        $needList[] = $value;
-//                        $data['匹配情况'] = '未匹配';
-//                        $insertSql.='("' . $value . '","0","' . date('Y-m-d H:i:s') . '","0","' . $data['产品id'] . '"),';
-//                    }
-//                }
-//                if (!is_numeric($key) && !in_array($key, $needList)) {
-//                    if (isset($wordsList[$key])) {
-//                        if ($wordsList[$key]['status'] == '200') {
-//                            $data[$wordsList[$key]['dest_words']] = $data[$key];
-//                            unset($data[$key]);
-//                        } else {
-//                            $data['匹配情况'] = '未匹配';
-//                        }
-//                    } else {
-//                        $needList[] = $key;
-//                        $data['匹配情况'] = '未匹配';
-//                        $insertSql.='("' . $key . '","0","' . date('Y-m-d H:i:s') . '","0","' . $data['产品id'] . '"),';
-//                    }
-//                }
-//            }
-//            foreach ($data['分类'] as $key => $value) {
-//                if (!is_numeric($value) && !in_array($value, $needList)) {
-//                    if (isset($wordsList[$value])) {
-//                        if ($wordsList[$value]['status'] == '200') {
-//                            $data['分类'][$key] = $wordsList[$value]['dest_words'];
-//                        } else {
-//                            $data['匹配情况'] = '未匹配';
-//                        }
-//                    } else {
-//                        $needList[] = $value;
-//                        $data['匹配情况'] = '未匹配';
-//                        $insertSql.='("' . $value . '","0","' . date('Y-m-d H:i:s') . '","1","' . $data['产品id'] . '"),';
-//                    }
-//                }
-//                if (!is_numeric($key) && !in_array($key, $needList)) {
-//                    if (isset($wordsList[$key])) {
-//                        if ($wordsList[$key]['status'] == '200') {
-//                            $data['分类'][$wordsList[$key]['dest_words']] = $data['分类'][$key];
-//                            unset($data['分类'][$key]);
-//                        } else {
-//                            $data['匹配情况'] = '未匹配';
-//                        }
-//                    } else {
-//                        $needList[] = $key;
-//                        $data['匹配情况'] = '未匹配';
-//                        $insertSql.='("' . $key . '","0","' . date('Y-m-d H:i:s') . '","1","' . $data['产品id'] . '"),';
-//                    }
-//                }
-//            }
-//            if (!empty($data['categories'])) {
-//                $len = count($data['categories']);
-//                $cateModel = \Categories::findFirst([
-//                            'conditions' => 'orign_category=:orign_category:',
-//                            'bind' => [
-//                                'orign_category' => strtolower($data['categories'][$len - 1])
-//                            ]
-//                ]);
-//                if ($cateModel->status == 200) {
-//                    $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $data['产品id'];
-//                    $qCount = \Queue::count([
-//                                'conditions' => 'queue_url=:queue_url: and status=0',
-//                                'bind' => [
-//                                    'queue_url' => $queueUrl
-//                                ]
-//                    ]);
-//                    if ($qCount == 0) {
-//                        $queue = new \Queue();
-//                        $queue->queue_url = $queueUrl;
-//                        $queue->status = 0;
-//                        $queue->createtime = date('Y-m-d H:i:s');
-//                        $queue->content = '分类匹配成功';
-//                        $queue->save();
-//                    }
-//                }
-//                if ($cateModel == false || $cateModel->status != 200) {
-//                    $needWorsModel = new \NeedWords();
-//                    $needWorsModel->source_product_id = $data['产品id'];
-//                    $needWorsModel->words = $data['categories'][$len - 1];
-//                    $needWorsModel->is_cate = 1;
-//                    $needWorsModel->status = 0;
-//                    $needWorsModel->createtime = date('Y-m-d H:i:s');
-//                    $needWorsModel->save();
-//                }
-//                if ($cateModel == false) {
-//                    $cateModel = new \Categories();
-//                    $cateModel->orign_category = $data['categories'][$len - 1];
-//                    $cateModel->status = 0;
-//                    $cateModel->source_product_id = $data['产品id'];
-//                    $cateModel->createtime = date('Y-m-d H:i:s');
-//                    $cateModel->save();
-//                }
-//            }
             if (!empty($insertSql)) {
                 $insertSql = 'insert into words (`orign_words`,`status`,`createtime`,`is_cate`,`source_product_id`)values' . rtrim($insertSql, ',') . ';';
                 \Words::insertSql($insertSql);

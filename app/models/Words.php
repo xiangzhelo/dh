@@ -26,31 +26,57 @@ class Words extends Model {
         $db->execute($sql);
     }
 
-    public static function getPage($page = 1, $size = 100, $like_words = '', $status = '') {
+    public static function getPage($page = 1, $size = 100, $like_words = '', $status = '', $important = 0) {
         $q = [];
+        $sql = '';
         if (!empty($like_words)) {
             $q['conditions'] = '(orign_words like :orign_words: or dest_words like :dest_words:)';
             $q['bind'] = [
                 'orign_words' => '%' . $like_words . '%',
                 'dest_words' => '%' . $like_words . '%'
             ];
+            $sql = 'where (w.orign_words like "%' . $like_words . '%" or w.dest_words like "%' . $like_words . '%")';
+        }
+        if ($important !== '') {
+            if (isset($q['conditions'])) {
+                $q['conditions'].=' and important = :important:';
+                $q['bind']['important'] = $important;
+                $sql.=' and w.important = "' . $important . '"';
+            } else {
+                $q['conditions'] = 'important = :important:';
+                $q['bind'] = ['important' => $important];
+                $sql = 'where w.important = "' . $important . '"';
+            }
         }
         if ($status !== '') {
             if (isset($q['conditions'])) {
                 $q['conditions'].=' and status = :status:';
                 $q['bind']['status'] = $status;
+                $sql.=' and w.status = "' . $status . '"';
             } else {
                 $q['conditions'] = 'status = :status:';
                 $q['bind'] = ['status' => $status];
+                $sql = 'where w.status = "' . $status . '"';
             }
         }
         $all_num = self::count($q);
-        $q['order'] = 'is_cate desc,id desc';
-        $q['limit'] = [
-            'number' => $size,
-            'offset' => (($page - 1) * $size)
-        ];
-        $list = self::find($q)->toArray();
+        $sql = 'select * from words w ' . $sql . ' order by w.important asc,w.id asc limit ' . (($page - 1) * $size) . ',' . $size;
+        $db = \Phalcon\DI::getDefault()->getShared('db');
+        $list = $db->query($sql)->fetchAll();
+//        $q['order'] = 'is_cate asc,id asc';
+//        $q['limit'] = [
+//            'number' => $size,
+//            'offset' => (($page - 1) * $size)
+//        ];
+//        $modelManager = \Phalcon\DI::getDefault()->getShared('modelsManager')->createBuilder();
+//        $list = $modelManager->from('Words')
+//                ->where(isset($q['conditions']) ? $q['conditions'] : '', isset($q['bind']) ? $q['bind'] : [])
+//                ->orderBy($q['order'])
+//                ->limit($q['limit']['number'], $q['limit']['offset'])
+//                ->getQuery()
+//                ->execute()
+//                ->toArray();
+//        $list = self::find($q)->toArray();
         $pages = (object) [
                     'total_pages' => ceil($all_num / $size),
                     'last' => ceil($all_num / $size),
