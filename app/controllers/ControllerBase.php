@@ -8,7 +8,7 @@ use Lib\Vendor\CommonFun;
 class ControllerBase extends Controller {
 
     public function initialize() {
-        session_start();
+        
     }
 
     protected function echoJson($data) {
@@ -18,35 +18,32 @@ class ControllerBase extends Controller {
     }
 
     protected function hasLogin($username) {
-        if ($_SESSION[$username . '_cookie_time'] > (time() - 86400)) {
-            return true;
+        $cookiesModel = \Cookies::findFirst([
+                    'conditions' => 'username=:username:',
+                    'bind' => [
+                        'username' => $username
+                    ]
+        ]);
+        if ($cookiesModel instanceof \Cookies) {
+            if ($cookiesModel->cookies_time > (time() - 36400)) {
+                return true;
+            }
         }
-        $url = 'http://seller.dhgate.com/mydhgate/menuv2.do?act=ajaxGetQuickMenuList';
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $cookie = @file_get_contents(PUL_PATH . 'cookies/' . $username . '_cookie.txt');
-        if (!empty($cookie)) {
-            curl_setopt($ch, CURLOPT_COOKIE, $cookie);
-        }
-        if (0 === strpos(strtolower($url), 'https')) {
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0); //对认证证书来源的检查
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); //从证书中检查SSL加密算法是否存在
-        }
-        $content = curl_exec($ch);
-        curl_close($ch);
-        $json = json_decode($content, true);
-        if (isset($json['queryMenuList'])) {
-            return true;
-        } else {
-            return false;
-        }
+        return false;
     }
 
     protected function getUserCookie($username) {
-        $cookie = file_get_contents(PUL_PATH . 'cookies/' . $username . '_cookie.txt');
-        return $cookie;
+        $cookiesModel = \Cookies::findFirst([
+                    'conditions' => 'username=:username:',
+                    'bind' => [
+                        'username' => $username
+                    ]
+        ]);
+        if ($cookiesModel instanceof \Cookies) {
+            return $cookiesModel->cookies;
+        } else {
+            return '';
+        }
     }
 
     protected function loginDh($username, $password) {
@@ -83,8 +80,22 @@ class ControllerBase extends Controller {
         }
         $url = CommonFun::getLocation($header1);
         $this->getUrl($url, $cookie);
-        @file_put_contents(PUL_PATH . 'cookies/' . $username . '_cookie.txt', $cookie);
-        $_SESSION[$username . '_cookie_time'] = time();
+        $cookiesModel = \Cookies::findFirst([
+                    'conditions' => 'username=:username:',
+                    'bind' => [
+                        'username' => $username
+                    ]
+        ]);
+        if (!$cookiesModel instanceof \Cookies) {
+            $cookiesModel = new \Cookies();
+            $cookiesModel->username = $username;
+            $cookiesModel->createtime = date('Y-m-d H:i:s');
+        }
+        $cookiesModel->cookies_time = time();
+        $cookiesModel->cookies = $cookie;
+        $cookiesModel->updatetime = date('Y-m-d H:i:s');
+        $cookiesModel->save();
+        $this->cookies_arr = $cookiesModel->toArray();
         return true;
     }
 

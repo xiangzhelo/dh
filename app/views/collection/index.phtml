@@ -86,7 +86,7 @@
                     success: function (json) {
                         var html = $('#return_msg').html();
                         if (json['status'] == 'success') {
-                            html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span> <a href="/collection/data?id=' + json['data']['item']['id'] + '" target="_blank">查看采集内容>></a></div>' + html;
+                            html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span></div>' + html;
                         } else {
                             html = '<div class="opt_error"><span>' + num + '、' + json['msg'] + '</span> 采集url:<a href="' + json['data']['source_url'] + '" target="_blank">' + json['data']['source_url'] + '</a></div>' + html;
                         }

@@ -246,7 +246,7 @@ class LexiconController extends ControllerBase {
             }
             if ($needArr[$n]['required'] == '1' && $needArr[$n]['is_exist'] != '1') {
                 foreach ($v['valueList'] as $v1) {
-                    if (in_array($v1['lineAttrvalNameCn'], $tran_product_data)) {
+                    if (in_array($v1['lineAttrvalNameCn'], $tran_product_data) || in_array($v1['lineAttrvalName'], $tran_product_data)) {
                         $tran_product_data[$v['lineAttrNameCn']] = $v1['lineAttrvalNameCn'];
                     }
                 }
@@ -256,6 +256,9 @@ class LexiconController extends ControllerBase {
             $n++;
         }
         $tran_product_data['需要匹配'] = $needArr;
+        if ($status == '1') {
+            $tran_product_data['匹配情况'] = '匹配成功';
+        }
         $product->tran_product_data = json_encode($tran_product_data, JSON_UNESCAPED_UNICODE);
         $product->dh_category_id = $categoryModel->dh_category_id;
         $product->status = $status;
@@ -308,14 +311,6 @@ class LexiconController extends ControllerBase {
             if (empty($value)) {
                 return;
             }
-//            if (!empty($key) && isset($needJson[$key])) {
-//                foreach ($needJson[$key]['valueList'] as $v) {
-//                    if (strtolower($v['lineAttrvalName']) == $value) {
-//                        $dest_words = $needJson[$key]['lineAttrNameCn'] . ':' . $v['lineAttrvalNameCn'];
-//                        $tran_product_data = $this->mergeArr($tran_product_data, $dest_words);
-//                    }
-//                }
-//            }
             if (empty($key) || preg_match('/^\d+$/', $key) || $key == 'type' || $key == 'style' || $key == 'function' || $key == 'feature' || $key == 'key word-' || $key == 'features') {
                 $str = ':' . $value;
                 $wordModel = \Words::findFirst([

@@ -26,8 +26,13 @@ class ProductController extends ControllerBase {
     public function indexAction() {
         $page = $this->request->get('page', 'int', 1);
         $status = $this->request->get('status', 'string', '');
+        $catePubId = $this->request->get('catePubId', 'string', '');
+        $cateIds = [];
+        if (!empty($catePubId)) {
+            $this->getCate($catePubId, $cateIds);
+        }
         $size = 100;
-        $pages = \Product::getPage($page, $size, $status);
+        $pages = \Product::getPage($page, $size, $status, $cateIds);
         $this->view->pages = $pages;
         $this->view->page = $page;
         $this->view->status = $status;
@@ -574,7 +579,7 @@ class ProductController extends ControllerBase {
             $model->updatetime = date('Y-m-d H:i:s');
             $model->status = 2;
             $model->save();
-            $this->echoJson(['status' => 'success', 'msg' => '保存成功']);
+            $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_product_id' => $model->dh_product_id, 'dh_category_id' => $model->dh_category_id]]);
         } else {
             $this->echoJson(['status' => 'error', 'msg' => '保存失败']);
         }
@@ -630,6 +635,45 @@ class ProductController extends ControllerBase {
         $json = json_decode(file_get_contents(PUL_PATH . 'cate_words.json'), true);
         ksort($json, SORT_NUMERIC);
         $this->echoJson($json);
+    }
+
+    public function addProductAction() {
+        $ids = $this->request->get('ids');
+        $content = $this->request->get('content', 'string');
+        if (empty($ids)) {
+            $this->echoJson(['status' => 'error', 'msg' => '添加产品数为空']);
+        }
+        $sNum = 0;
+        $eNum = 0;
+        foreach ($ids as $v) {
+            $queue = new \Queue();
+            $queue->queue_url = 'http://www.dh.com/product/draft?id=' . $v;
+            $queue->status = 0;
+            $queue->createtime = date('Y-m-d H:i:s');
+            $queue->contents = $content;
+            $ret = $queue->save();
+            if ($ret == false) {
+                $eNum++;
+            } else {
+                $this->db->execute('update product set status=4 where id=' . $v);
+                $sNum++;
+            }
+        }
+        $this->db->execute('update product set status=4 where id in (' . implode(',', $ids) . ')');
+        $msg = '添加' . $sNum . '条队列成功,' . $eNum . '失败';
+        $this->echoJson(['status' => 'success', 'msg' => $msg]);
+    }
+
+    public function getCate($catePubId, &$list) {
+        $list[] = $catePubId;
+        $json = json_decode(file_get_contents('http://www.dh.com/product/getCateAttr?catePubId=' . $catePubId), true);
+        foreach ($json['data'] as $v) {
+            if ($v['leaf'] == '0') {
+                $this->getCate($v['catePubId'], $list);
+            } else {
+                $list[] = $v['catePubId'];
+            }
+        }
     }
 
 }

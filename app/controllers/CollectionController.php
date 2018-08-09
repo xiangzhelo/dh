@@ -120,7 +120,27 @@ class CollectionController extends ControllerBase {
     public function dataAction() {
         $id = $this->request->get('id', 'int');
         $model = \Product::findFirst($id);
-        $this->echoJson(json_decode($model->tran_product_data, true));
+        if (strpos(PUL_PATH, '94946') === false || isset($_GET['dev'])) {
+            $data = json_decode(empty($model->tran_product_data) ? $model->product_data : $model->tran_product_data, true);
+            echo "<div>匹配情况:<span style='color:red;'>{$data['匹配情况']}</span></div>";
+            echo "<div style='margin-top:5px;'>[</div>";
+            $this->dataJson($data);
+            echo "<div style='margin-top:5px;'>]</div>";
+            exit();
+        }
+        $this->echoJson(json_decode(empty($model->tran_product_data) ? $model->product_data : $model->tran_product_data, true));
+    }
+
+    private function dataJson($data, $depth = 1) {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                echo "<div style='margin-left:" . ($depth * 30) . "px;margin-top:5px;'><span style='margin-right:5px;font-weight:600;display:inline-block;'>" . (is_int($key) ? '' : $key . ' ： ') . "</span>[</div>";
+                $this->dataJson($value, $depth + 1);
+                echo "<div style='margin-left:" . ($depth * 30) . "px;margin-top:5px;'><span style='margin-right:5px;font-weight:600;display:inline-block;'></span>],</div>";
+            } else {
+                echo "<div style='margin-left:" . ($depth * 30) . "px;margin-top:5px;'><span style='margin-right:5px;font-weight:600;display:inline-block;'>" . (is_int($key) ? '' : $key . ' ： ') . "</span>{$value},</div>";
+            }
+        }
     }
 
     public function t1Action() {
@@ -174,6 +194,7 @@ class CollectionController extends ControllerBase {
         if ($page > 1 && !empty($nUrl) && $nUrl != false) {
             $msg.=$this->multiHand($nUrl, --$page, ++$p);
         }
+        return $msg;
     }
 
     public function queueAction() {

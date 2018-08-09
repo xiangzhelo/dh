@@ -74,6 +74,16 @@ class SettingController extends ControllerBase {
 
     public function queue($qnum) {
         try {
+//            $queues = \Queue::findFirst([
+//                        'conditions' => 'status=0 or status=400',
+//                        'order' => 'status asc,id asc',
+//            ]);
+//
+//            if ($queues instanceof \Queue) {
+//                $output = @file_get_contents($queues->queue_url);
+//                $this->queueCallBack1($output, ['id' => $queues->id]);
+//            }
+
             $queues = \Queue::find([
                         'conditions' => 'status=0 or status=400',
                         'order' => 'status asc,id asc',
@@ -127,6 +137,24 @@ class SettingController extends ControllerBase {
         }
     }
 
+    public function queueCallBack1($content, $args) {
+        if (json_decode($content, true)['status'] == 'success') {
+            $queue = \Queue::findFirst($args['id']);
+            $queue->status = 200;
+            $queue->save();
+            \Log::createOne('URL:' . $queue->queue_url . ',返回:' . $content, 'queue');
+        } else {
+            $queue = \Queue::findFirst($args['id']);
+            if ($queue->status == 401) {
+                $queue->status = 402;
+            } else {
+                $queue->status = 400;
+            }
+            $queue->save();
+            \Log::createOne('URL:' . $queue->queue_url . ',返回:' . $content, 'queue');
+        }
+    }
+
     public function queueFalse($res, $args) {
         $queue = \Queue::findFirst($args['id']);
         if ($queue == false) {
@@ -139,6 +167,44 @@ class SettingController extends ControllerBase {
         }
         $queue->save();
         \Log::createOne('URL:' . $queue->queue_url . ',返回:' . json_encode($res, JSON_UNESCAPED_UNICODE), 'queueFalse');
+    }
+
+    public function addQueueAction() {
+        $queueUrl = $this->request->get('queue_url');
+        $content = $this->request->get('content', 'string');
+        if (empty($queueUrl)) {
+            $this->echoJson(['status' => 'error', 'msg' => '链接不可为空']);
+        }
+        $sNum = 0;
+        $eNum = 0;
+        if (is_array($queueUrl)) {
+            foreach ($queueUrl as $v) {
+                $queue = new \Queue();
+                $queue->queue_url = $v;
+                $queue->status = 0;
+                $queue->createtime = date('Y-m-d H:i:s');
+                $queue->contents = $content;
+                $ret = $queue->save();
+                if ($ret == false) {
+                    $eNum++;
+                } else {
+                    $sNum++;
+                }
+            }
+            $msg = '添加' . $sNum . '条队列成功,' . $eNum . '失败';
+        } else {
+            $queue = new \Queue();
+            $queue->queue_url = $queueUrl;
+            $queue->status = 0;
+            $queue->createtime = date('Y-m-d H:i:s');
+            $queue->contents = $content;
+            $ret = $queue->save();
+            if ($ret == false) {
+                $this->echoJson(['status' => 'error', 'msg' => '添加队列失败']);
+            }
+            $msg = '添加完成';
+        }
+        $this->echoJson(['status' => 'success', 'msg' => $msg]);
     }
 
 }

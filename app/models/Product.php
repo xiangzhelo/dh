@@ -25,7 +25,7 @@ class Product extends Model {
         }
     }
 
-    public static function getPage($page = 1, $size = 100, $status = '') {
+    public static function getPage($page = 1, $size = 100, $status = '', $cateIds = []) {
         $q = [
             'columns' => 'id,source_url,source_product_id,source_product_name,source_img,dh_product_id,status,need_attribute,createtime'
         ];
@@ -36,6 +36,15 @@ class Product extends Model {
             } else {
                 $q['conditions'] = 'status = :status:';
                 $q['bind'] = ['status' => $status];
+            }
+        }
+        if (!empty($cateIds)) {
+            if (isset($q['conditions'])) {
+                $q['conditions'].=' and dh_category_id in ({dh_category_id:array})';
+                $q['bind']['dh_category_id'] = $cateIds;
+            } else {
+                $q['conditions'] = 'dh_category_id in ({dh_category_id:array})';
+                $q['bind'] = ['dh_category_id' => $cateIds];
             }
         }
         $all_num = self::count($q);
