@@ -15,7 +15,7 @@ class ProductController extends ControllerBase {
     public $password = 'lk123456';
 
     public function needLogin() {
-        $hasLogin = $this->hasLogin();
+        $hasLogin = $this->hasLogin($this->username);
         if ($hasLogin == false) {
             $this->loginDh($this->username, $this->password);
         }
@@ -78,6 +78,80 @@ class ProductController extends ControllerBase {
         return json_decode($contents, true);
     }
 
+    public function getMatchAction() {
+        set_time_limit(0);
+        $this->needLogin();
+        $this->getMatch(0);
+        echo 'success';
+        exit();
+    }
+
+    public function getMatch($cate_id) {
+        $file = PUL_PATH . 'cateArr/' . $cate_id . '.json';
+        if (file_exists($file)) {
+            $jsonStr = file_get_contents($file);
+        } else {
+            $jsonStr = MyCurl::get('http://seller.dhgate.com/syi/categorybyid.do?catePubId=' . $cate_id . '&isblank=true&_=' . time(), $this->cookie);
+            if ($jsonStr != false) {
+                file_put_contents($file, $jsonStr);
+            }
+        }
+        $json = json_decode($jsonStr, true);
+        foreach ($json['data'] as $v) {
+            if ($v['leaf'] == '0') {
+                $this->getMatch($v['catePubId']);
+            } else {
+                $this->match($v['catePubId']);
+            }
+        }
+    }
+
+    public function match($cate_id) {
+        $json = $this->getCateAttrL($cate_id);
+        foreach ($json['data']['attributeList'] as $v1) {
+            if (!empty($v1['valueList'])) {
+                foreach ($v1['valueList'] as $v2) {
+                    $keyvalue = \Keyvalue::findFirst([
+                                'conditions' => 'key=:key: and value=:value:',
+                                'bind' => [
+                                    'key' => strtolower($v1['lineAttrName']),
+                                    'value' => strtolower($v2['lineAttrvalName'])
+                                ]
+                    ]);
+                    if ($keyvalue == false) {
+                        $keyvalue = new \Keyvalue();
+                        $keyvalue->key = strtolower($v1['lineAttrName']);
+                        $keyvalue->value = strtolower($v2['lineAttrvalName']);
+                        $keyvalue->keycn = strtolower($v1['lineAttrNameCn']);
+                        $keyvalue->valuecn = strtolower($v2['lineAttrvalNameCn']);
+                        $keyvalue->createtime = date('Y-m-d H:i:s');
+                        $keyvalue->save();
+                    }
+                    $str = strtolower($v1['lineAttrName']) . ':' . strtolower($v2['lineAttrvalName']);
+                    $dest_words = $v1['lineAttrNameCn'] . ':' . $v2['lineAttrvalNameCn'];
+                    $words = \Words::findFirst([
+                                'conditions' => 'orign_words=:orign_words:',
+                                'bind' => [
+                                    'orign_words' => $str
+                                ]
+                    ]);
+                    if ($words == false) {
+                        $words = new \Words();
+                        $words->orign_words = $str;
+                        $words->dest_words = $dest_words;
+                        $words->status = 200;
+                        $words->createtime = date('Y-m-d H:i:s');
+                        $words->save();
+                    } else {
+                        if ($words->status != 200) {
+                            file_get_contents('http://www.dh.com/lexicon/update?id=' . $words->id . '&dest_words=' . $dest_words);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public function draftAction() {
         $this->needLogin();
         $id = $this->request->get('id', 'int');
@@ -110,12 +184,22 @@ class ProductController extends ControllerBase {
                 $data[$key] = $input->value;
             }
         }
-        $data['productname'] = htmlspecialchars_decode($sourceData['产品标题']);
+        $data['productname'] = mb_substr(htmlspecialchars_decode($sourceData['产品标题']), 0, 140, 'utf-8');
         $data['forEditOldCatePubid'] = $data['catepubid'];
-        $keysLen = count($sourceData['关键词']);
-        $data['keyword1'] = isset($sourceData['关键词'][$keysLen - 1]) ? trim($sourceData['关键词'][$keysLen - 1]) : false;
-        $data['keyword2'] = isset($sourceData['关键词'][$keysLen - 2]) ? trim($sourceData['关键词'][$keysLen - 2]) : false;
-        $data['keyword3'] = isset($sourceData['关键词'][$keysLen - 3]) ? trim($sourceData['关键词'][$keysLen - 3]) : false;
+        $keywordNum = 1;
+        $data['keyword1'] = false;
+        $data['keyword2'] = false;
+        $data['keyword3'] = false;
+        foreach ($sourceData['关键词'] as $k => $v) {
+            $v = trim($v);
+            if (mb_strlen($v, 'utf-8') <= 40) {
+                $data['keyword' . $keywordNum] = $v;
+                $keywordNum++;
+                if ($keywordNum > 2) {
+                    break;
+                }
+            }
+        }
         $data['brandid'] = '99';
         $data['brandName'] = '无品牌';
         $data['elm'] = @file_get_contents(PUL_PATH . $sourceData['产品介绍']);
@@ -277,9 +361,32 @@ class ProductController extends ControllerBase {
                                                         'brandValId' => ''
                                                     ];
                                                     unset($productInfo[$key]['valueList'][$k2]);
+                                                    unset($arr['valueList'][$k2]);
                                                     if ($arr['isother'] == '0') {
                                                         $isbreak = true;
                                                         break;
+                                                    }
+                                                }
+                                            }
+                                            if (empty($attrlist[$num]['valueList'])) {
+                                                $keyvalue = \Keyvalue::findFirst([
+                                                            'conditions' => 'valuecn=:valuecn:',
+                                                            'bind' => [
+                                                                'valuecn' => $v1
+                                                            ]
+                                                ]);
+                                                if ($keyvalue != false) {
+                                                    $attrlist[$num]['valueList'][] = [
+                                                        'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
+                                                        'attrValId' => '0',
+                                                        'lineAttrvalName' => $keyvalue->value,
+                                                        'lineAttrvalNameCn' => '',
+                                                        'iscustomsized' => '0',
+                                                        'picUrl' => '',
+                                                        'brandValId' => ''
+                                                    ];
+                                                    if ($arr['isother'] == '0') {
+                                                        $isbreak = true;
                                                     }
                                                 }
                                             }
@@ -319,9 +426,32 @@ class ProductController extends ControllerBase {
                                                     'brandValId' => ''
                                                 ];
                                                 unset($productInfo[$key]['valueList'][$k1]);
+                                                unset($arr['valueList'][$k1]);
                                                 if ($arr['isother'] == '0') {
                                                     $isbreak = true;
                                                     break;
+                                                }
+                                            }
+                                        }
+                                        if (empty($attrlist[$num]['valueList'])) {
+                                            $keyvalue = \Keyvalue::findFirst([
+                                                        'conditions' => 'valuecn=:valuecn:',
+                                                        'bind' => [
+                                                            'valuecn' => $v
+                                                        ]
+                                            ]);
+                                            if ($keyvalue != false) {
+                                                $attrlist[$num]['valueList'][] = [
+                                                    'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
+                                                    'attrValId' => '0',
+                                                    'lineAttrvalName' => $keyvalue->value,
+                                                    'lineAttrvalNameCn' => '',
+                                                    'iscustomsized' => '0',
+                                                    'picUrl' => '',
+                                                    'brandValId' => ''
+                                                ];
+                                                if ($arr['isother'] == '0') {
+                                                    $isbreak = true;
                                                 }
                                             }
                                         }
@@ -381,7 +511,7 @@ class ProductController extends ControllerBase {
         } else {
             $getSzSellerTemplate = [];
         }
-        if ((isset($sourceData['适用']) && is_array($sourceData['适用']) && in_array('women', $sourceData['适用'])) || strpos(strtolower($sourceData['描述']), 'women') !== false) {
+        if ((isset($sourceData['适用']) && is_array($sourceData['适用']) && in_array('women', $sourceData['适用'])) || in_array('女士', $sourceData)) {
             $template = 0; //'women shoe';
         } else {
             $template = 1; //'men shoe';

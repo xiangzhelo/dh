@@ -97,11 +97,20 @@ class CommonFun {
                 '折扣' => self::getJsValue($contents, 'window.runParams.discount')
             ];
             $data['categories'] = [];
-            foreach ($html->find('.ui-breadcrumb a') as $a) {
-                if (!empty($a->title)) {
-                    $data['categories'][] = strtolower(urldecode($a->title));
+            if (!empty($html->find('.ui-breadcrumb a'))) {
+                foreach ($html->find('.ui-breadcrumb a') as $a) {
+                    if (!empty($a->title)) {
+                        $data['categories'][] = strtolower(urldecode($a->title));
+                    }
                 }
-            }
+            } 
+//            else if (!empty($html->find('.m-sop-crumb b'))) {
+//                foreach ($html->find('.m-sop-crumb b') as $b) {
+//                    if (!empty($b->plaintext)) {
+//                        $data['categories'][] = strtolower(urldecode($b->plaintext));
+//                    }
+//                }
+//            }
             $attribute = [];
             $sizes = [];
             $colorList = [];

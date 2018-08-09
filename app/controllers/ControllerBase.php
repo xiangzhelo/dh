@@ -8,7 +8,7 @@ use Lib\Vendor\CommonFun;
 class ControllerBase extends Controller {
 
     public function initialize() {
-        
+        session_start();
     }
 
     protected function echoJson($data) {
@@ -17,7 +17,10 @@ class ControllerBase extends Controller {
         exit;
     }
 
-    protected function hasLogin() {
+    protected function hasLogin($username) {
+        if ($_SESSION[$username . '_cookie_time'] > (time() - 86400)) {
+            return true;
+        }
         $url = 'http://seller.dhgate.com/mydhgate/menuv2.do?act=ajaxGetQuickMenuList';
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -81,6 +84,7 @@ class ControllerBase extends Controller {
         $url = CommonFun::getLocation($header1);
         $this->getUrl($url, $cookie);
         @file_put_contents(PUL_PATH . 'cookies/' . $username . '_cookie.txt', $cookie);
+        $_SESSION[$username . '_cookie_time'] = time();
         return true;
     }
 

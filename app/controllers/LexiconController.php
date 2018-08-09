@@ -217,10 +217,12 @@ class LexiconController extends ControllerBase {
             if (preg_match('/[\x7f-\xff]/', $key)) {
                 continue;
             }
-            $this->addNeedWords($key, $value, $product->source_product_id, $tran_product_data, $tran_product_data['分类id'], $needJson);
+            $this->addNeedWords($key, $value, $product->source_product_id, $tran_product_data, $tran_product_data['分类id']);
         }
         $needArr = [];
         $n = 0;
+        $status = 1;
+        $need_attribute = '';
         foreach ($needJson as $v) {
             if (in_array($v['lineAttrNameCn'], ['颜色', '尺码'])) {
                 continue;
@@ -233,12 +235,31 @@ class LexiconController extends ControllerBase {
             if (isset($tran_product_data[$v['lineAttrNameCn']])) {
                 $needArr[$n]['is_exist'] = '1';
             }
+            if ($needArr[$n]['required'] == '1' && $needArr[$n]['is_exist'] != '1') {
+                foreach ($v['valueList'] as $v1) {
+                    if (in_array($v1['lineAttrvalNameCn'], $tran_product_data)) {
+                        $tran_product_data[$v['lineAttrNameCn']] = $v1['lineAttrvalNameCn'];
+                        $needArr[$n]['is_exist'] = '1';
+                        break;
+                    }
+                }
+            }
+            if ($needArr[$n]['required'] == '1' && $needArr[$n]['is_exist'] != '1') {
+                foreach ($v['valueList'] as $v1) {
+                    if (in_array($v1['lineAttrvalNameCn'], $tran_product_data)) {
+                        $tran_product_data[$v['lineAttrNameCn']] = $v1['lineAttrvalNameCn'];
+                    }
+                }
+                $need_attribute.=$v['lineAttrNameCn'] . '|';
+                $status = 0;
+            }
             $n++;
         }
         $tran_product_data['需要匹配'] = $needArr;
         $product->tran_product_data = json_encode($tran_product_data, JSON_UNESCAPED_UNICODE);
         $product->dh_category_id = $categoryModel->dh_category_id;
-        $product->status = 1;
+        $product->status = $status;
+        $product->need_attribute = $need_attribute;
         $product->save();
         $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $product->source_product_id;
         $this->db->execute('update queue set status=200 where queue_url="' . $queueUrl . '"');
@@ -246,7 +267,7 @@ class LexiconController extends ControllerBase {
         exit();
     }
 
-    public function addNeedWords($key, $value, $source_product_id, &$tran_product_data, $catepubid, $needJson) {
+    public function addNeedWords($key, $value, $source_product_id, &$tran_product_data, $catepubid) {
         $key = preg_replace('/(\s+)(\d+)$/', '', $key);
         $key = trim($key);
         $key = trim($key, '-');
@@ -255,20 +276,29 @@ class LexiconController extends ControllerBase {
             return;
         }
         if (is_string($value)) {
-            if (preg_match('/^[\d|,|，|\.]+$/', $value)) {
-                return;
-            }
-            if ($key == 'gender') {
-                if (preg_match('/^men/', $value) || preg_match('/\smen/', $value) || preg_match('/^male/', $value) || preg_match('/\smale/', $value) || preg_match('/^man/', $value) || preg_match('/\sman/', $value)) {
-                    $value = 'men';
+            $str = $key . ':' . $value;
+            $wordModel = \Words::findFirst([
+                        'conditions' => 'orign_words=:orign_words:',
+                        'bind' => [
+                            'orign_words' => $str
+                        ]
+            ]);
+            if ($wordModel == false) {
+                if (preg_match('/^[\d|,|，|\.]+$/', $value)) {
+                    return;
                 }
-                if (strpos($value, 'women') !== false || strpos($value, 'woman') !== false || strpos($value, 'female') !== false) {
-                    $value = 'women';
+                if ($key == 'gender') {
+                    if (preg_match('/^men/', $value) || preg_match('/\smen/', $value) || preg_match('/^male/', $value) || preg_match('/\smale/', $value) || preg_match('/^man/', $value) || preg_match('/\sman/', $value)) {
+                        $value = 'men';
+                    }
+                    if (strpos($value, 'women') !== false || strpos($value, 'woman') !== false || strpos($value, 'female') !== false) {
+                        $value = 'women';
+                    }
                 }
-            }
-            if (strpos($value, '(') === false && (strpos($value, ',') !== false || strpos($value, '，') !== false)) {
-                $value = str_replace('，', ',', $value);
-                $value = explode(',', $value);
+                if (strpos($value, '(') === false && (strpos($value, ',') !== false || strpos($value, '，') !== false)) {
+                    $value = str_replace('，', ',', $value);
+                    $value = explode(',', $value);
+                }
             }
         }
         $important = 3;
@@ -278,14 +308,14 @@ class LexiconController extends ControllerBase {
             if (empty($value)) {
                 return;
             }
-            if (!empty($key) && isset($needJson[$key])) {
-                foreach ($needJson[$key]['valueList'] as $v) {
-                    if (strtolower($v['lineAttrvalName']) == $value) {
-                        $dest_words = $needJson[$key]['lineAttrNameCn'] . ':' . $v['lineAttrvalNameCn'];
-                        $tran_product_data = $this->mergeArr($tran_product_data, $dest_words);
-                    }
-                }
-            }
+//            if (!empty($key) && isset($needJson[$key])) {
+//                foreach ($needJson[$key]['valueList'] as $v) {
+//                    if (strtolower($v['lineAttrvalName']) == $value) {
+//                        $dest_words = $needJson[$key]['lineAttrNameCn'] . ':' . $v['lineAttrvalNameCn'];
+//                        $tran_product_data = $this->mergeArr($tran_product_data, $dest_words);
+//                    }
+//                }
+//            }
             if (empty($key) || preg_match('/^\d+$/', $key) || $key == 'type' || $key == 'style' || $key == 'function' || $key == 'feature' || $key == 'key word-' || $key == 'features') {
                 $str = ':' . $value;
                 $wordModel = \Words::findFirst([
@@ -324,6 +354,26 @@ class LexiconController extends ControllerBase {
                 }
             }
             if ($wordModel == false || $wordModel->status != 200) {
+                $hasKey = \Keyvalue::findFirst([
+                            'conditions' => 'key=:key:',
+                            'bind' => [
+                                'key' => $key
+                            ]
+                ]);
+                if ($hasKey != false) {
+                    $keyvalue = \Keyvalue::findFirst([
+                                'conditions' => 'key=:key: and value=:value:',
+                                'bind' => [
+                                    'key' => $key,
+                                    'value' => $value
+                                ]
+                    ]);
+                    if ($keyvalue != false) {
+                        $dest_words = $keyvalue->keycn . ':' . $keyvalue->valuecn;
+                    } else {
+                        $dest_words = $hasKey->keycn . ':自定义|' . $value;
+                    }
+                }
                 $needWorsModel = new \NeedWords();
                 $needWorsModel->source_product_id = $source_product_id;
                 $needWorsModel->words = $str;
@@ -353,7 +403,7 @@ class LexiconController extends ControllerBase {
         } else {
             if (is_array($value)) {
                 foreach ($value as $v) {
-                    $this->addNeedWords($key, $v, $source_product_id, $tran_product_data, $catepubid, $needJson);
+                    $this->addNeedWords($key, $v, $source_product_id, $tran_product_data, $catepubid);
                 }
             }
         }
@@ -712,7 +762,9 @@ class LexiconController extends ControllerBase {
     }
 
     public function t6Action() {
-        $list = \Product::find();
+        $list = \Product::find([
+                    'conditions' => 'status=0'
+        ]);
         foreach ($list as $item) {
             $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
             $queue = new \Queue();
@@ -722,6 +774,109 @@ class LexiconController extends ControllerBase {
             $queue->contents = '分类匹配成功,产品属性匹配';
             $queue->save();
         }
+    }
+
+    public function t7Action() {
+        $list = \Product::find([
+                    'conditions' => 'status=0'
+        ]);
+        foreach ($list as $item) {
+            $queueUrl = 'http://www.dh.com/collection/hand?source_url=' . urlencode($item->source_url);
+            $queue = new \Queue();
+            $queue->queue_url = $queueUrl;
+            $queue->status = 0;
+            $queue->createtime = date('Y-m-d H:i:s');
+            $queue->contents = '采集';
+            $queue->save();
+        }
+    }
+
+    public function matchKeyvalueAction() {
+        set_time_limit(0);
+        $key = $this->request->get('key', 'string', '');
+        $q = [
+            'conditions' => 'status=0'
+        ];
+        if (!empty($key)) {
+            $q['conditions'].=' and orign_words like "%' . $key . '%"';
+        }
+        $words = \Words::find($q);
+        $num = 0;
+        foreach ($words as $model) {
+            $arr = explode(':', $model->orign_words);
+            if (count($arr) != 2) {
+                continue;
+            }
+            if (empty($arr[0])) {
+                $count = \Keyvalue::count([
+                            'conditions' => 'value=:value:',
+                            'bind' => [
+                                'value' => $arr[1]
+                            ]
+                ]);
+                if ($count == 1) {
+                    $keyvalue = \Keyvalue::findFirst([
+                                'conditions' => 'value=:value:',
+                                'bind' => [
+                                    'value' => $arr[1]
+                                ]
+                    ]);
+                    if ($keyvalue != false) {
+                        $dest_words = $keyvalue->keycn . ':' . $keyvalue->valuecn;
+                        file_get_contents('http://www.dh.com/lexicon/update?id=' . $model->id . '&dest_words=' . $dest_words);
+                        $num++;
+                    }
+                }
+                continue;
+            }
+            $hasKey = \Keyvalue::findFirst([
+                        'conditions' => 'key=:key:',
+                        'bind' => [
+                            'key' => $arr[0]
+                        ]
+            ]);
+            if ($hasKey != false) {
+                $keyvalue = \Keyvalue::findFirst([
+                            'conditions' => 'key=:key: and value=:value:',
+                            'bind' => [
+                                'key' => $arr[0],
+                                'value' => $arr[1]
+                            ]
+                ]);
+                if ($keyvalue != false) {
+                    $dest_words = $keyvalue->keycn . ':' . $keyvalue->valuecn;
+                } else {
+                    $dest_words = $hasKey->keycn . ':自定义|' . $arr[1];
+                }
+                file_get_contents('http://www.dh.com/lexicon/update?id=' . $model->id . '&dest_words=' . $dest_words);
+                $num++;
+            }
+        }
+        echo 'success:' . $num;
+        exit();
+    }
+
+    public function addKeyAction() {
+        $key = $this->request->get('key', 'string', '');
+        $key1 = $this->request->get('key1', 'string', '');
+        $keyvalues = \Keyvalue::find([
+                    'conditions' => 'key=:key:',
+                    'bind' => [
+                        'key' => strtolower($key)
+                    ]
+                ])->toArray();
+        if (!empty($keyvalues)) {
+            foreach ($keyvalues as $v) {
+                unset($v['id']);
+                $v['createtime'] = date('Y-m-d H:i:s');
+                $v['key'] = strtolower($key1);
+                $model = new \Keyvalue();
+                $model->save($v);
+            }
+        }
+        file_get_contents('http://www.dh.com/lexicon/matchKeyvalue?key=' . strtolower($key1));
+        echo 'success';
+        exit();
     }
 
 }

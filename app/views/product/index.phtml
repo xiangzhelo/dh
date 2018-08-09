@@ -25,7 +25,7 @@
                 echo '<tr aid="' . $item['id'] . '">
                     <td style="text-align: center;">' . $item['createtime'] . '</td> 
                     <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank"><img src="' . $item['source_img'] . '" style="height:60px;margin:3px 10px;"/></a></td> 
-                    <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank">' . $item['source_product_name'] . '</a></td> 
+                    <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank">' . $item['source_product_name'] . ($item['status'] == 0 ? '<span style="color:red;font-size:8px;">(' . (empty($item['need_attribute']) ? '分类|属性' : trim($item['need_attribute'], '|')) . '缺失)</span>' : '') . '</a></td> 
                     <td style="text-align: center;" class="opt_td">' . ($item['status'] == 200 ? '已上传' : ($item['status'] == 2 ? '已保存草稿' : ($item['status'] == 1 ? '匹配成功' : ($item['status'] == 400 ? '放弃' : '未配对')))) . $opt . '</td> 
                 </tr>';
             }

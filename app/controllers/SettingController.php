@@ -79,7 +79,8 @@ class SettingController extends ControllerBase {
                         'order' => 'status asc,id asc',
                         'limit' => $qnum
             ]);
-            if ($queues == false) {
+
+            if (empty($queues)) {
                 return;
             }
             $mcurl = new \Lib\Vendor\Mcurl();
@@ -96,7 +97,7 @@ class SettingController extends ControllerBase {
                 }
                 $item->save();
                 $url = $item->queue_url;
-                $mcurl->add(['url' => $url, 'args' => ['id' => $item->id]], [$this, 'queueCallBack']);
+                $mcurl->add(['url' => $url, 'args' => ['id' => $item->id]], [$this, 'queueCallBack'], [$this, 'queueFalse']);
                 $num++;
             }
             if ($num > 0) {
@@ -124,6 +125,20 @@ class SettingController extends ControllerBase {
             $queue->save();
             \Log::createOne('URL:' . $queue->queue_url . ',返回:' . $res['content'], 'queue');
         }
+    }
+
+    public function queueFalse($res, $args) {
+        $queue = \Queue::findFirst($args['id']);
+        if ($queue == false) {
+            return;
+        }
+        if ($queue->status == 1) {
+            $queue->status = 400;
+        } elseif ($queue->status == 401) {
+            $queue->status = 402;
+        }
+        $queue->save();
+        \Log::createOne('URL:' . $queue->queue_url . ',返回:' . json_encode($res, JSON_UNESCAPED_UNICODE), 'queueFalse');
     }
 
 }

@@ -19,20 +19,33 @@
     .opt_error span{
         margin-right: 10px;
     }
-    #source_url{
+    .source_url{
         margin-top: 10px;
         width: 900px;
         height:100px;
         border: 1px solid #ccc;
         border-radius: 5px;
     }
+    .page{
+        margin-top: 10px;
+        width: 100px;
+        height:40px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
 </style>
 <div  class="ui container segment">
-    <div style="float:left; margin: 10px 20px 0 10px;">采集URL : </div><textarea name="source_url" id="source_url"></textarea>
+    <div style="float:left; margin: 10px 20px 0 10px;">采集URL : </div><textarea name="source_url" class="source_url" id="source_url"></textarea>
     <div style="margin:10px 20px;">
         <button class="ui primary button" id="sub_btn">采&nbsp;&nbsp;集</button>
     </div>
 
+    <div style="float:left; margin: 10px 20px 0 10px;">采集列表URL : </div><textarea name="source_url1" class="source_url" id="source_url1"></textarea>
+    <br/>
+    <div style="float:left; margin: 10px 20px 0 10px;line-height: 40px;">采集页数 : </div><input id="page" class="page" value="10" />页
+    <div style="margin:10px 20px;">
+        <button class="ui primary button" id="sub_btn1">批量采集</button>
+    </div>
     <div style="margin:80px 20px 0 20px;">
         <div>操作信息 :</div>
         <div id="return_msg" style="margin:10px 0 0 20px;">
@@ -61,6 +74,28 @@
                     }
                 });
             });
+            $('#sub_btn1').click(function () {
+                var source_url = $('#source_url1').val();
+                var page = $('#page').val();
+                $.ajax({
+                    url: '/collection/multiHand',
+                    type: 'POST',
+                    dataType: 'json',
+                    async: false,
+                    data: {source_url: source_url, page: page},
+                    success: function (json) {
+                        var html = $('#return_msg').html();
+                        if (json['status'] == 'success') {
+                            html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span> <a href="/collection/data?id=' + json['data']['item']['id'] + '" target="_blank">查看采集内容>></a></div>' + html;
+                        } else {
+                            html = '<div class="opt_error"><span>' + num + '、' + json['msg'] + '</span> 采集url:<a href="' + json['data']['source_url'] + '" target="_blank">' + json['data']['source_url'] + '</a></div>' + html;
+                        }
+                        $('#return_msg').html(html);
+                        num++;
+                    }
+                });
+            });
         });
+
     </script>
 </div>

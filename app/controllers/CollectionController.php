@@ -16,15 +16,27 @@ class CollectionController extends ControllerBase {
     }
 
     public function handAction() {
-        error_reporting(-1);
-        ini_set('display_errors', 1);
+        ini_set('display_errors', 'On');
+        error_reporting(E_ALL);
         $source_url = $this->request->get('source_url', 'string');
+        $collection_new = $this->request->get('collection_new', 'string', '0');
         $len = strpos($source_url, '?');
         if ($len > 0) {
             $source_url = substr($source_url, 0, $len);
         }
         if (strpos($source_url, 'http') === false) {
             $source_url = 'http:' . $source_url;
+        }
+        if ($collection_new == '1') {
+            $hasProduct = \Product::findFirst([
+                        'conditions' => 'source_url = :source_url:',
+                        'bind' => [
+                            'source_url' => $source_url
+                        ]
+            ]);
+            if ($hasProduct != false) {
+                $this->echoJson(['status' => 'success', 'msg' => '已采集', 'data' => ['item' => ['id' => $hasProduct->id]]]);
+            }
         }
         $data = CommonFun::hand($source_url);
         $status = 0;
@@ -99,7 +111,7 @@ class CollectionController extends ControllerBase {
                 }
             }
             if ($model == true) {
-                $this->echoJson(['status' => 'success', 'msg' => '采集成功']); //, 'data' => ['product_data' => $data, 'item' => $model->toArray()]
+                $this->echoJson(['status' => 'success', 'msg' => '采集成功', 'data' => ['item' => ['id' => $model->id]]]); //, 'data' => ['product_data' => $data, 'item' => $model->toArray()]
             }
         }
         $this->echoJson(['status' => 'error', 'msg' => '采集失败,' . $data, 'data' => ['source_url' => $source_url]]);
@@ -108,7 +120,7 @@ class CollectionController extends ControllerBase {
     public function dataAction() {
         $id = $this->request->get('id', 'int');
         $model = \Product::findFirst($id);
-        $this->echoJson(json_decode($model->product_data, true));
+        $this->echoJson(json_decode($model->tran_product_data, true));
     }
 
     public function t1Action() {
@@ -125,40 +137,49 @@ class CollectionController extends ControllerBase {
 
     public function multiHandAction() {
         set_time_limit(0);
-        $url = 'https://www.aliexpress.com/wholesale?SearchText=boots&page=6';
-        $this->multiHand($url, 1);
+        $url = $this->request->get('source_url', 'string', '');
+        $page = $this->request->get('page', 'int', 10);
+//        $url = 'https://www.aliexpress.com/wholesale?catId=0&SearchText=shoes&page=13';
+        $msg = $this->multiHand($url, $page);
+        $this->echoJson(['status' => 'success', 'msg' => $msg, 'data' => ['source_url' => $url]]);
         exit();
     }
 
-    public function multiHand($url, $page) {
-        $curl = new \Lib\Vendor\MyCurl();
-        $output = $curl->get($url);
+    public function multiHand($url, $page, $p = 1) {
+        $msg = '';
+        $curl = new \Lib\Vendor\Curl();
+        $output = $curl->get($url, ['X-FORWARDED-FOR:' . CommonFun::Rand_IP(), 'CLIENT-IP:' . CommonFun::Rand_IP()]);
+        if ($output == false) {
+            return '失败';
+        }
         $dom = new \Lib\Vendor\HtmlDom();
         $html = $dom->load($output);
         $num = 0;
-        foreach ($html->find('#hs-below-list-items li .img a') as $a) {
-            $href = $a->href;
-            $queueUrl = 'http://www.dh.com/collection/hand?source_url=' . urlencode($href);
-            $queue = new \Queue();
-            $queue->queue_url = $queueUrl;
-            $queue->status = 0;
-            $queue->createtime = date('Y-m-d H:i:s');
-            $queue->contents = '产品采集';
-            $queue->save();
-            $num++;
-        }
-        $nUrl = $html->find('.page-next', 0)->href;
-        if ($page > 1 && !empty($nUrl) && $nUrl != false) {
-            $this->multiHand($nUrl, --$page);
+        if (!empty($html->find('#list-items li .img a,.list-items li .img a'))) {
+            foreach ($html->find('#list-items li .img a,.list-items li .img a') as $a) {
+                $href = $a->href;
+                $queueUrl = 'http://www.dh.com/collection/hand?source_url=' . urlencode($href) . '&collection_new=1';
+                $queue = new \Queue();
+                $queue->queue_url = $queueUrl;
+                $queue->status = 0;
+                $queue->createtime = date('Y-m-d H:i:s');
+                $queue->contents = '产品采集';
+                $queue->save();
+                $num++;
+            }
+            $nUrl = 'https:' . str_replace('&amp;', '&', $html->find('.page-next', 0)->href);
         }
         $html->clear();
-        echo 'success;处理条数:' . $num;
+        $msg.= '第' . $p . '页获取' . $num . '商品； ';
+        if ($page > 1 && !empty($nUrl) && $nUrl != false) {
+            $msg.=$this->multiHand($nUrl, --$page, ++$p);
+        }
     }
 
     public function queueAction() {
         set_time_limit(0);
         $queues = \Queue::find([
-                    'conditions' => 'status=200'
+                    'conditions' => 'queue_url like "http://www.dh.com/lexicon/wordsMatch%" and status=200'
         ]);
         $mcurl = new \Lib\Vendor\Mcurl();
         $mcurl->maxThread = 3;

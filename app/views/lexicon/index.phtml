@@ -175,7 +175,7 @@
             async: false,
             success: function (json) {
                 $("html,body").animate({scrollTop: ($('tr[aid=' + id + ']').offset().top - 60)}, 500);
-                if (json['data']['attributeList'].length > 0) {
+                if (json['data'] != null && json['data']['attributeList'].length > 0) {
                     html += '<div class="divItem"><span class="spanTitle">适用 ：</span><span class="spanUl"><span class="spanLi"><input type="checkbox" class="infoJsonCheck"  value="适用:men">男士</span><span class="spanLi"><input type="checkbox" class="infoJsonCheck" name="Contrast Color" value="适用:women">女士</span><span class="spanLi"><input type="checkbox" class="infoJsonCheck" name="Contrast Color" value="适用:成人">成人</span><span class="spanLi"><input type="checkbox" class="infoJsonCheck" name="Contrast Color" value="适用:非成人">非成人</span></span></div>';
                     $.each(json['data']['attributeList'], function (k, v) {
                         html += '<div class="divItem">';
