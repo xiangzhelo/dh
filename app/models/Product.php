@@ -30,12 +30,20 @@ class Product extends Model {
             'columns' => 'id,source_url,source_product_id,source_product_name,source_img,dh_product_id,status,need_attribute,createtime'
         ];
         if ($status !== '') {
-            if (isset($q['conditions'])) {
-                $q['conditions'].=' and status = :status:';
-                $q['bind']['status'] = $status;
-            } else {
-                $q['conditions'] = 'status = :status:';
-                $q['bind'] = ['status' => $status];
+            if($status=='2'){
+                if (isset($q['conditions'])) {
+                    $q['conditions'].=' and dh_product_id>0';
+                } else {
+                    $q['conditions'] = 'dh_product_id>0';
+                }
+            }else{
+                if (isset($q['conditions'])) {
+                    $q['conditions'].=' and status = :status:';
+                    $q['bind']['status'] = $status;
+                } else {
+                    $q['conditions'] = 'status = :status:';
+                    $q['bind'] = ['status' => $status];
+                }
             }
         }
         if (!empty($cateIds)) {

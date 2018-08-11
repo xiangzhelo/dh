@@ -103,7 +103,7 @@ class CommonFun {
                         $data['categories'][] = strtolower(urldecode($a->title));
                     }
                 }
-            } 
+            }
 //            else if (!empty($html->find('.m-sop-crumb b'))) {
 //                foreach ($html->find('.m-sop-crumb b') as $b) {
 //                    if (!empty($b->plaintext)) {
@@ -114,42 +114,94 @@ class CommonFun {
             $attribute = [];
             $sizes = [];
             $colorList = [];
-            foreach ($html->find('#j-product-info-sku #j-sku-list-1 a') as $a) {
-                $id = $a->getAttribute('data-sku-id');
-                $colorList[$id] = [
-                    '颜色' => strtolower(str_replace(' ', '', $a->title)),
-                    '图片' => empty($a->find('img')) ? '' : $a->find('img', 0)->bigpic,
-                    '颜色id' => $id,
-                ];
+            $skuAttr = [];
+            $postion = ['size' => 99, 'from' => 99, 'color' => 99];
+            $pos = 0;
+            foreach ($html->find('#j-product-info-sku .p-property-item') as $item) {
+                $type = strtolower($item->find('.p-item-title', 0)->plaintext);
+                $ids = [];
+                if (strpos($type, 'color') !== false) {
+                    foreach ($item->find('a') as $a) {
+                        $id = $a->getAttribute('data-sku-id');
+                        $colorList[$id] = [
+                            '颜色' => strtolower(str_replace(' ', '', $a->title)),
+                            '图片' => empty($a->find('img')) ? '' : $a->find('img', 0)->bigpic,
+                            '颜色id' => $id,
+                            '颜色orign' => $a->title,
+                        ];
+                        $ids[] = $id;
+                    }
+                    $skuAttr[] = $ids;
+                    $postion['color'] = $pos;
+                    $pos++;
+                } elseif (strpos($type, 'size') !== false) {
+                    foreach ($item->find('a') as $a) {
+                        $id = $a->getAttribute('data-sku-id');
+                        $sizes[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;
+                        $ids[] = $id;
+                    }
+                    $skuAttr[] = $ids;
+                    $postion['size'] = $pos;
+                    $pos++;
+                } elseif (strpos($type, 'ships from') !== false) {
+                    $ids[] = 201336100;
+                    $skuAttr[] = $ids;
+                    $postion['from'] = $pos;
+                    $pos++;
+                }
             }
-            foreach ($html->find('#j-product-info-sku #j-sku-list-2 a') as $a) {
-                $id = $a->getAttribute('data-sku-id');
-                $sizes[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;
-            }
-            $skuAttr = self::getJsJson($contents, 'skuAttrIds');
+//            foreach ($html->find('#j-product-info-sku #j-sku-list-1 a') as $a) {
+//                $id = $a->getAttribute('data-sku-id');
+//                $colorList[$id] = [
+//                    '颜色' => strtolower(str_replace(' ', '', $a->title)),
+//                    '图片' => empty($a->find('img')) ? '' : $a->find('img', 0)->bigpic,
+//                    '颜色id' => $id,
+//                ];
+//            }
+//            foreach ($html->find('#j-product-info-sku #j-sku-list-2 a') as $a) {
+//                $id = $a->getAttribute('data-sku-id');
+//                $sizes[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;
+//            }
+//            $skuAttr = self::getJsJson($contents, 'skuAttrIds');
             $skuProducts = self::getJsJson($contents, 'skuProducts');
+            if (!empty($skuAttr)) {
+                $skuAttr = self::crossArr([], $skuAttr);
+            }
             if (count($skuProducts) > 0) {
                 $skuProducts = array_column($skuProducts, null, 'skuPropIds');
             }
             $num = 0;
-            foreach ($skuAttr[0] as $v0) {
-                foreach ($skuAttr[1] as $v1) {
-                    if (isset($skuProducts[$v0 . ',' . $v1])) {
-                        $info = $skuProducts[$v0 . ',' . $v1];
-                    } else {
-                        $info = $skuProducts[$v0 . ',' . $v1 . ',201336100'];
-                    }
-
-                    $attribute[$num] = $colorList[$v0];
-                    $attribute[$num]['尺码id'] = $v1;
-                    $attribute[$num]['尺码'] = trim($sizes[$v1], ' ');
-                    $attribute[$num]['可用量'] = $info['skuVal']['availQuantity'];
-                    $attribute[$num]['库存'] = $info['skuVal']['inventory'];
-                    $attribute[$num]['折扣价'] = isset($info['skuVal']['actSkuCalPrice']) ? $info['skuVal']['actSkuCalPrice'] : $info['skuVal']['skuCalPrice'];
-                    $attribute[$num]['原价'] = $info['skuVal']['skuCalPrice'];
-                    $num++;
-                }
+            foreach ($skuAttr as $v) {
+                $info = $skuProducts[$v];
+                $arr = explode(',', $v);
+                $attribute[$num] = isset($colorList[$arr[$postion['color']]]) ? $colorList[$arr[$postion['color']]] : '';
+                $attribute[$num]['尺码id'] = isset($arr[$postion['size']]) ? $arr[$postion['size']] : '';
+                $attribute[$num]['尺码'] = isset($arr[$postion['size']]) && isset($sizes[$arr[$postion['size']]]) ? trim($sizes[$arr[$postion['size']]], ' ') : '';
+                $attribute[$num]['可用量'] = $info['skuVal']['availQuantity'];
+                $attribute[$num]['库存'] = $info['skuVal']['inventory'];
+                $attribute[$num]['折扣价'] = isset($info['skuVal']['actSkuCalPrice']) ? $info['skuVal']['actSkuCalPrice'] : $info['skuVal']['skuCalPrice'];
+                $attribute[$num]['原价'] = $info['skuVal']['skuCalPrice'];
+                $num++;
             }
+
+//            foreach ($skuAttr[0] as $v0) {
+//                foreach ($skuAttr[1] as $v1) {
+//                    if (isset($skuProducts[$v0 . ',' . $v1])) {
+//                        $info = $skuProducts[$v0 . ',' . $v1];
+//                    } else {
+//                        $info = $skuProducts[$v0 . ',' . $v1 . ',201336100'];
+//                    }
+//
+//                    $attribute[$num] = $colorList[$v0];
+//                    $attribute[$num]['尺码id'] = $v1;
+//                    $attribute[$num]['尺码'] = trim($sizes[$v1], ' ');
+//                    $attribute[$num]['可用量'] = $info['skuVal']['availQuantity'];
+//                    $attribute[$num]['库存'] = $info['skuVal']['inventory'];
+//                    $attribute[$num]['折扣价'] = isset($info['skuVal']['actSkuCalPrice']) ? $info['skuVal']['actSkuCalPrice'] : $info['skuVal']['skuCalPrice'];
+//                    $attribute[$num]['原价'] = $info['skuVal']['skuCalPrice'];
+//                    $num++;
+//                }
+//            }
             $needMatchList = [];
             foreach ($html->find('.product-property-list li') as $li) {
                 $key = strtolower(trim(trim($li->find('.propery-title', 0)->plaintext), ':'));
@@ -182,16 +234,29 @@ class CommonFun {
                 $data['产品图片'][] = substr($str, 0, strrpos($str, '_50x50.jpg'));
             }
             $html->clear();
-            $insertSql = '';
             $data['匹配情况'] = '未匹配';
-            if (!empty($insertSql)) {
-                $insertSql = 'insert into words (`orign_words`,`status`,`createtime`,`is_cate`,`source_product_id`)values' . rtrim($insertSql, ',') . ';';
-                \Words::insertSql($insertSql);
-            }
             return $data;
         } catch (Exception $e) {
             return $e->getMessage();
         }
+    }
+
+    public static function crossArr($arr1, $arr2, $s = ',') {
+        $data = [];
+        if (empty($arr1)) {
+            $data = array_splice($arr2, 0, 1)[0];
+        } else {
+            $arr3 = array_splice($arr2, 0, 1)[0];
+            foreach ($arr1 as $v1) {
+                foreach ($arr3 as $v3) {
+                    $data[] = $v1 . $s . $v3;
+                }
+            }
+        }
+        if (!empty($arr2)) {
+            $data = self::crossArr($data, $arr2);
+        }
+        return $data;
     }
 
 }

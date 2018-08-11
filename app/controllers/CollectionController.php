@@ -46,10 +46,11 @@ class CollectionController extends ControllerBase {
             }
             if (!empty($data['categories'])) {
                 $len = count($data['categories']);
+                $category = trim(strtolower(implode(' > ', $data['categories'])));
                 $cateModel = \Categories::findFirst([
                             'conditions' => 'orign_category=:orign_category:',
                             'bind' => [
-                                'orign_category' => trim(strtolower($data['categories'][$len - 1]))
+                                'orign_category' => $category
                             ]
                 ]);
                 if ($cateModel != false && $cateModel->status == 200) {
@@ -69,10 +70,17 @@ class CollectionController extends ControllerBase {
                         $queue->save();
                     }
                 }
-                if ($cateModel == false || $cateModel->status != 200) {
+                $needWords = \NeedWords::findFirst([
+                            'conditions' => 'words=:words: and is_cate=1 and source_product_id=:source_product_id:',
+                            'bind' => [
+                                'words' => $category,
+                                'source_product_id' => $data['产品id']
+                            ]
+                ]);
+                if ($needWords == false) {
                     $needWorsModel = new \NeedWords();
                     $needWorsModel->source_product_id = $data['产品id'];
-                    $needWorsModel->words = $data['categories'][$len - 1];
+                    $needWorsModel->words = $category;
                     $needWorsModel->is_cate = 1;
                     $needWorsModel->status = 0;
                     $needWorsModel->createtime = date('Y-m-d H:i:s');
@@ -80,7 +88,7 @@ class CollectionController extends ControllerBase {
                 }
                 if ($cateModel == false) {
                     $cateModel = new \Categories();
-                    $cateModel->orign_category = $data['categories'][$len - 1];
+                    $cateModel->orign_category = $category;
                     $cateModel->status = 0;
                     $cateModel->source_product_id = $data['产品id'];
                     $cateModel->createtime = date('Y-m-d H:i:s');

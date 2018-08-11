@@ -28,7 +28,7 @@ class SettingController extends ControllerBase {
         $sw = $this->request->get('sw', 'int', '0');
         $t = $this->request->get('t', 'int', '3');
         $queueNum = $this->request->get('queueNum', 'int', '3');
-        if (($sw == 1 || $sw == 0) && $t > 0 && $t < 60 && $queueNum > 0 && $queueNum < 8) {
+        if (($sw == 1 || $sw == 0) && $t > 0 && $t < 60 && $queueNum > 0 && $queueNum < 11) {
             $file = APP_PATH . 'config/setting.json';
             if (file_exists($file)) {
                 $json = json_decode(file_get_contents($file), true);
@@ -87,7 +87,7 @@ class SettingController extends ControllerBase {
             $queues = \Queue::find([
                         'conditions' => 'status=0 or status=400',
                         'order' => 'status asc,id asc',
-                        'limit' => $qnum
+                        'limit' => $qnum * 10
             ]);
 
             if (empty($queues)) {
@@ -100,12 +100,12 @@ class SettingController extends ControllerBase {
             foreach ($queues as $item) {
                 if ($item->status == 0) {
                     $item->status = 1;
-                } else if ($item->status == 400) {
+                } else if ($item->status == 400 || $queue->status == 402) {
                     $item->status = 401;
                 } else {
                     continue;
                 }
-                $item->save();
+                $ret = $item->save();
                 $url = $item->queue_url;
                 $mcurl->add(['url' => $url, 'args' => ['id' => $item->id]], [$this, 'queueCallBack'], [$this, 'queueFalse']);
                 $num++;
@@ -127,7 +127,7 @@ class SettingController extends ControllerBase {
             \Log::createOne('URL:' . $queue->queue_url . ',返回:' . $res['content'], 'queue');
         } else {
             $queue = \Queue::findFirst($args['id']);
-            if ($queue->status == 401) {
+            if ($queue->status == 401 || $queue->status == 402) {
                 $queue->status = 402;
             } else {
                 $queue->status = 400;

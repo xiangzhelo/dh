@@ -56,7 +56,7 @@ class LexiconController extends ControllerBase {
             $model->status = 200;
             $model->save();
             $needList = \NeedWords::find([
-                        'conditions' => 'words=:words: and is_cate=1 and status=0',
+                        'conditions' => 'words=:words: and is_cate=1',
                         'bind' => [
                             'words' => $model->orign_category
                         ]
@@ -195,8 +195,7 @@ class LexiconController extends ControllerBase {
         if (empty($product_data['categories'])) {
             $this->echoJson(['status' => 'error', 'msg' => '分类错误,不存在分类']);
         }
-        $len = count($product_data['categories']);
-        $mainCategory = $product_data['categories'][$len - 1];
+        $mainCategory = trim(strtolower(implode(' > ', $product_data['categories'])));
         $categoryModel = \Categories::findFirst([
                     'conditions' => 'orign_category=:orign_category:',
                     'bind' => [
@@ -211,7 +210,7 @@ class LexiconController extends ControllerBase {
         $tran_product_data['分类名称'] = $categoryModel->dest_category;
         $needJson = json_decode(file_get_contents('http://www.dh.com/product/getCateAttrL?catePubId=' . $categoryModel->dh_category_id), true);
         if (!empty($needJson['data']['attributeList'])) {
-            $needJson = CommonFun::arrayColumns($needJson['data']['attributeList'], null, 'lineAttrName');
+            $needJson = CommonFun::arrayColumns($needJson['data']['attributeList'], null, 'lineAttrNameCn');
         }
         foreach ($product_data as $key => $value) {
             if (preg_match('/[\x7f-\xff]/', $key)) {
@@ -223,6 +222,14 @@ class LexiconController extends ControllerBase {
         $n = 0;
         $status = 1;
         $need_attribute = '';
+        
+        $colorsList = CommonFun::arrayColumns($needJson['颜色']['valueList'], null, 'lineAttrvalName');
+        $sizesList = array_column($needJson['尺码']['valueList'], null, 'lineAttrvalName');
+        $ret = $this->colorSize($tran_product_data['属性'], $colorsList, $sizesList);
+        if ($ret == false) {
+            $need_attribute.='颜色尺码|';
+            $status = 0;
+        }
         foreach ($needJson as $v) {
             if (in_array($v['lineAttrNameCn'], ['颜色', '尺码'])) {
                 continue;
@@ -264,8 +271,6 @@ class LexiconController extends ControllerBase {
         $product->status = $status;
         $product->need_attribute = $need_attribute;
         $product->save();
-        $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $product->source_product_id;
-        $this->db->execute('update queue set status=200 where queue_url="' . $queueUrl . '"');
         $this->echoJson(['status' => 'success', 'msg' => '成功']);
         exit();
     }
@@ -313,18 +318,19 @@ class LexiconController extends ControllerBase {
             }
             if (empty($key) || preg_match('/^\d+$/', $key) || $key == 'type' || $key == 'style' || $key == 'function' || $key == 'feature' || $key == 'key word-' || $key == 'features') {
                 $str = ':' . $value;
-                $wordModel = \Words::findFirst([
+                $wordModels = \Words::find([
                             'conditions' => 'orign_words like :orign_words:',
                             'bind' => [
                                 'orign_words' => '%' . $str
-                            ]
+                            ],
+                            'order' => 'status desc'
                 ]);
                 if (strlen($str) < 20) {
                     $important = 2;
                 }
             } else {
                 $str = $key . ':' . $value;
-                $wordModel = \Words::findFirst([
+                $wordModels = \Words::find([
                             'conditions' => 'orign_words=:orign_words:',
                             'bind' => [
                                 'orign_words' => $str
@@ -334,50 +340,55 @@ class LexiconController extends ControllerBase {
                     $important = 2;
                 }
             }
-            if ($wordModel != false) {
-                $nCount = \NeedWords::count([
-                            'conditions' => 'words=:words:',
-                            'bind' => [
-                                'words' => $wordModel->orign_words
-                            ],
-                            'column' => 'DISTINCT source_product_id'
-                ]);
-                if ($nCount > 10) {
-                    $important = 0;
-                } else if ($important == 2 && $nCount > 3) {
-                    $important = 1;
-                }
-            }
-            if ($wordModel == false || $wordModel->status != 200) {
-                $hasKey = \Keyvalue::findFirst([
-                            'conditions' => 'key=:key:',
-                            'bind' => [
-                                'key' => $key
-                            ]
-                ]);
-                if ($hasKey != false) {
-                    $keyvalue = \Keyvalue::findFirst([
-                                'conditions' => 'key=:key: and value=:value:',
+            $hasKeys = \Keyvalue::find([
+                        'conditions' => 'key=:key:',
+                        'bind' => [
+                            'key' => $key
+                        ],
+                        'group' => 'keycn',
+                        'columns' => 'keycn'
+            ]);
+            if (!empty($hasKeys)) {
+                foreach ($hasKeys as $hasKey) {
+                    $keyvalues = \Keyvalue::find([
+                                'conditions' => 'key=:key: and keycn=:keycn: and value=:value:',
                                 'bind' => [
                                     'key' => $key,
+                                    'keycn' => $hasKey->keycn,
                                     'value' => $value
                                 ]
                     ]);
-                    if ($keyvalue != false) {
-                        $dest_words = $keyvalue->keycn . ':' . $keyvalue->valuecn;
+                    if (!empty($keyvalues)) {
+                        foreach ($keyvalues as $keyvalue) {
+                            if ($keyvalue instanceof \Keyvalue) {
+                                $dest_words .= ',' . $keyvalue->keycn . ':' . $keyvalue->valuecn;
+                            }
+                        }
                     } else {
-                        $dest_words = $hasKey->keycn . ':自定义|' . $value;
+                        $dest_words .= ',' . $hasKey->keycn . ':自定义|' . $value;
                     }
                 }
-                $needWorsModel = new \NeedWords();
-                $needWorsModel->source_product_id = $source_product_id;
-                $needWorsModel->words = $str;
-                $needWorsModel->is_cate = 0;
-                $needWorsModel->status = empty($dest_words) ? 0 : 200;
-                $needWorsModel->createtime = date('Y-m-d H:i:s');
-                $needWorsModel->save();
             }
-            if ($wordModel == false) {
+            foreach ($wordModels as $wordModel) {
+                if ($wordModel instanceof \Words) {
+                    $nCount = \NeedWords::count([
+                                'conditions' => 'words=:words:',
+                                'bind' => [
+                                    'words' => $wordModel->orign_words
+                                ],
+                                'column' => 'DISTINCT source_product_id'
+                    ]);
+                    if ($nCount > 10) {
+                        $important = 0;
+                    } else if ($important == 2 && $nCount > 3) {
+                        $important = 1;
+                    }
+                    if ($wordModel->status == 200) {
+                        $dest_words .=',' . $wordModel->dest_words;
+                    }
+                }
+            }
+            if (empty($wordModel)) {
                 $wordModel = new \Words();
                 $wordModel->orign_words = $str;
                 $wordModel->dest_words = $dest_words;
@@ -388,12 +399,25 @@ class LexiconController extends ControllerBase {
                 $wordModel->createtime = date('Y-m-d H:i:s');
                 $wordModel->catepubid = $catepubid;
                 $wordModel->save();
-            } else if ($wordModel->status == 200) {
-                $tran_product_data = $this->mergeArr($tran_product_data, $wordModel->dest_words);
-            } else {
-                $wordModel->dest_words = $dest_words;
-                $wordModel->status = empty($dest_words) ? $wordModel->status : 200;
-                $wordModel->save();
+            }
+            $needWords = \NeedWords::findFirst([
+                        'conditions' => 'words=:words: and is_cate=0 and source_product_id=:source_product_id:',
+                        'bind' => [
+                            'words' => $str,
+                            'source_product_id' => $source_product_id
+                        ]
+            ]);
+            if ($needWords == false) {
+                $needWorsModel = new \NeedWords();
+                $needWorsModel->source_product_id = $source_product_id;
+                $needWorsModel->words = $str;
+                $needWorsModel->is_cate = 0;
+                $needWorsModel->status = empty($dest_words) ? 0 : 200;
+                $needWorsModel->createtime = date('Y-m-d H:i:s');
+                $needWorsModel->save();
+            }
+            if ($dest_words != '') {
+                $tran_product_data = $this->mergeArr($tran_product_data, $dest_words);
             }
         } else {
             if (is_array($value)) {
@@ -404,8 +428,18 @@ class LexiconController extends ControllerBase {
         }
     }
 
+    public function colorSize($colorSizeArr, $colorsList, $sizesList) {
+        $list = [];
+        foreach ($colorSizeArr as $li) {
+            if (isset($colorsList[$li['颜色']]) && isset($sizesList['US' . $li['尺码']])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function mergeArr($arr, $jsonStr) {
-        $arr1 = explode(',', $jsonStr);
+        $arr1 = explode(',', trim($jsonStr, ','));
         if (!empty($arr1)) {
             foreach ($arr1 as $k => $v) {
                 $arr2 = explode(':', $v);
@@ -414,7 +448,9 @@ class LexiconController extends ControllerBase {
                         if (!is_array($arr[$arr2[0]])) {
                             $arr[$arr2[0]] = [$arr[$arr2[0]]];
                         }
-                        $arr[$arr2[0]][] = $arr2[1];
+                        if (!in_array($arr2[1], $arr[$arr2[0]])) {
+                            $arr[$arr2[0]][] = $arr2[1];
+                        }
                     } else if (!isset($arr[$arr2[0]])) {
                         $arr[$arr2[0]] = $arr2[1];
                     }
@@ -430,7 +466,7 @@ class LexiconController extends ControllerBase {
         $model = \Words::updateOne($id, $dest_words);
         if ($model != false) {
             $needList = \NeedWords::find([
-                        'conditions' => 'words=:words: and is_cate=0 and status=0',
+                        'conditions' => 'words=:words: and is_cate=0',
                         'bind' => [
                             'words' => $model->orign_words
                         ]
@@ -758,7 +794,7 @@ class LexiconController extends ControllerBase {
 
     public function t6Action() {
         $list = \Product::find([
-                    'conditions' => 'status=0'
+                    'conditions' => 'dh_category_id>0'
         ]);
         foreach ($list as $item) {
             $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
@@ -772,9 +808,7 @@ class LexiconController extends ControllerBase {
     }
 
     public function t7Action() {
-        $list = \Product::find([
-                    'conditions' => 'status=0'
-        ]);
+        $list = \Product::find();
         foreach ($list as $item) {
             $queueUrl = 'http://www.dh.com/collection/hand?source_url=' . urlencode($item->source_url);
             $queue = new \Queue();

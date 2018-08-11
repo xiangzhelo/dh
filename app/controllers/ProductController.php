@@ -117,10 +117,12 @@ class ProductController extends ControllerBase {
             if (!empty($v1['valueList'])) {
                 foreach ($v1['valueList'] as $v2) {
                     $keyvalue = \Keyvalue::findFirst([
-                                'conditions' => 'key=:key: and value=:value:',
+                                'conditions' => 'key=:key: and keycn=:keycn: and value=:value: and valuecn=:valuecn:',
                                 'bind' => [
                                     'key' => strtolower($v1['lineAttrName']),
-                                    'value' => strtolower($v2['lineAttrvalName'])
+                                    'keycn' => strtolower($v1['lineAttrNameCn']),
+                                    'value' => strtolower($v2['lineAttrvalName']),
+                                    'valuecn' => strtolower($v2['lineAttrvalNameCn'])
                                 ]
                     ]);
                     if ($keyvalue == false) {
@@ -304,6 +306,9 @@ class ProductController extends ControllerBase {
                 }
             }
         }
+        if (count($skuInfo[0]['skuInfoList']) == 0) {
+            $this->echoJson(['status' => 'error', 'msg' => '价格表不可为空']);
+        }
         $attrlist = [];
         $attrlist[] = [
             'class' => 'com.dhgate.syi.model.ProductAttributeVO',
@@ -340,37 +345,13 @@ class ProductController extends ControllerBase {
                                     if (is_array($arr['valueList']) && count($arr['valueList']) > 0) {
                                         if (strpos($v1, '自定义') !== false) {
                                             $vArr = explode('|', $v1);
-                                            $attrlist[$num]['valueList'][] = [
-                                                'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
-                                                'attrValId' => '0',
-                                                'lineAttrvalName' => isset($vArr[1]) && !empty($vArr[1]) ? $vArr[1] : '',
-                                                'lineAttrvalNameCn' => '',
-                                                'iscustomsized' => '0',
-                                                'picUrl' => '',
-                                                'brandValId' => ''
-                                            ];
-                                            if ($arr['isother'] == '0') {
-                                                $isbreak = true;
-                                                break;
-                                            }
+                                            $attrlist[$num]['valueList']['自定义'] = $this->setValueList(0, isset($vArr[1]) && !empty($vArr[1]) ? $vArr[1] : '', '', '0', '');
                                         } else {
                                             foreach ($arr['valueList'] as $k2 => $v2) {
                                                 if ($v1 == $v2['lineAttrvalNameCn']) {
-                                                    $attrlist[$num]['valueList'][] = [
-                                                        'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
-                                                        'attrValId' => $v2['attrValId'],
-                                                        'lineAttrvalName' => $v2['lineAttrvalName'],
-                                                        'lineAttrvalNameCn' => $v2['lineAttrvalNameCn'],
-                                                        'iscustomsized' => $v2['iscustomsized'],
-                                                        'picUrl' => $v2['picUrl'],
-                                                        'brandValId' => ''
-                                                    ];
+                                                    $attrlist[$num]['valueList'][] = $this->setValueList($v2['attrValId'], $v2['lineAttrvalName'], $v2['lineAttrvalNameCn'], $v2['iscustomsized'], $v2['picUrl']);
                                                     unset($productInfo[$key]['valueList'][$k2]);
                                                     unset($arr['valueList'][$k2]);
-                                                    if ($arr['isother'] == '0') {
-                                                        $isbreak = true;
-                                                        break;
-                                                    }
                                                 }
                                             }
                                             if (empty($attrlist[$num]['valueList'])) {
@@ -381,61 +362,23 @@ class ProductController extends ControllerBase {
                                                             ]
                                                 ]);
                                                 if ($keyvalue != false) {
-                                                    $attrlist[$num]['valueList'][] = [
-                                                        'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
-                                                        'attrValId' => '0',
-                                                        'lineAttrvalName' => $keyvalue->value,
-                                                        'lineAttrvalNameCn' => '',
-                                                        'iscustomsized' => '0',
-                                                        'picUrl' => '',
-                                                        'brandValId' => ''
-                                                    ];
-                                                    if ($arr['isother'] == '0') {
-                                                        $isbreak = true;
-                                                    }
+                                                    $attrlist[$num]['valueList']['自定义'] = $this->setValueList(0, $keyvalue->value, '', '0', '');
                                                 }
                                             }
                                         }
-                                    }
-                                    if ($isbreak == true) {
-                                        break;
                                     }
                                 }
                             } else {
                                 if (is_array($arr['valueList']) && count($arr['valueList']) > 0 && is_string($v)) {
                                     if (strpos($v, '自定义') !== false) {
                                         $vArr = explode('|', $v);
-                                        $attrlist[$num]['valueList'][] = [
-                                            'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
-                                            'attrValId' => '0',
-                                            'lineAttrvalName' => isset($vArr[1]) && !empty($vArr[1]) ? $vArr[1] : '',
-                                            'lineAttrvalNameCn' => '',
-                                            'iscustomsized' => '0',
-                                            'picUrl' => '',
-                                            'brandValId' => ''
-                                        ];
-                                        if ($arr['isother'] == '0') {
-                                            $isbreak = true;
-                                            break;
-                                        }
+                                        $attrlist[$num]['valueList']['自定义'] = $this->setValueList(0, isset($vArr[1]) && !empty($vArr[1]) ? $vArr[1] : '', '', '0', '');
                                     } else {
                                         foreach ($arr['valueList'] as $k1 => $v1) {
                                             if ($v == $v1['lineAttrvalNameCn']) {
-                                                $attrlist[$num]['valueList'][] = [
-                                                    'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
-                                                    'attrValId' => $v1['attrValId'],
-                                                    'lineAttrvalName' => $v1['lineAttrvalName'],
-                                                    'lineAttrvalNameCn' => $v1['lineAttrvalNameCn'],
-                                                    'iscustomsized' => $v1['iscustomsized'],
-                                                    'picUrl' => $v1['picUrl'],
-                                                    'brandValId' => ''
-                                                ];
+                                                $attrlist[$num]['valueList'][] = $this->setValueList($v1['attrValId'], $v1['lineAttrvalName'], $v1['lineAttrvalNameCn'], $v1['iscustomsized'], $v1['picUrl']);
                                                 unset($productInfo[$key]['valueList'][$k1]);
                                                 unset($arr['valueList'][$k1]);
-                                                if ($arr['isother'] == '0') {
-                                                    $isbreak = true;
-                                                    break;
-                                                }
                                             }
                                         }
                                         if (empty($attrlist[$num]['valueList'])) {
@@ -446,18 +389,7 @@ class ProductController extends ControllerBase {
                                                         ]
                                             ]);
                                             if ($keyvalue != false) {
-                                                $attrlist[$num]['valueList'][] = [
-                                                    'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
-                                                    'attrValId' => '0',
-                                                    'lineAttrvalName' => $keyvalue->value,
-                                                    'lineAttrvalNameCn' => '',
-                                                    'iscustomsized' => '0',
-                                                    'picUrl' => '',
-                                                    'brandValId' => ''
-                                                ];
-                                                if ($arr['isother'] == '0') {
-                                                    $isbreak = true;
-                                                }
+                                                $attrlist[$num]['valueList']['自定义'] = $this->setValueList(0, $keyvalue->value, '', '0', '');
                                             }
                                         }
                                     }
@@ -465,39 +397,31 @@ class ProductController extends ControllerBase {
                             }
                         }
                     }
-                    if ($isbreak == true) {
-                        break;
-                    }
                 } else {
                     if ($arr['lineAttrName'] == $k) {
                         if (is_array($arr['valueList']) && count($arr['valueList']) > 0 && is_string($v)) {
                             foreach ($arr['valueList'] as $k1 => $v1) {
                                 if (strtolower(trim($v1['lineAttrvalName'])) == strtolower(trim($v))) {
-                                    $attrlist[$num]['valueList'][] = [
-                                        'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
-                                        'attrValId' => $v1['attrValId'],
-                                        'lineAttrvalName' => $v1['lineAttrvalName'],
-                                        'lineAttrvalNameCn' => $v1['lineAttrvalNameCn'],
-                                        'iscustomsized' => $v1['iscustomsized'],
-                                        'picUrl' => $v1['picUrl'],
-                                        'brandValId' => ''
-                                    ];
+                                    $attrlist[$num]['valueList'][] = $this->setValueList($v1['attrValId'], $v1['lineAttrvalName'], $v1['lineAttrvalNameCn'], $v1['iscustomsized'], $v1['picUrl']);
                                     unset($productInfo[$key]['valueList'][$k1]);
-                                    if ($arr['isother'] == '0') {
-                                        $isbreak = true;
-                                        break;
-                                    }
+                                    unset($arr['valueList'][$k1]);
                                 }
                             }
-                        }
-                        if ($isbreak == true) {
-                            break;
                         }
                     }
                 }
             }
             if ($arr['required'] != '0' && empty($attrlist[$num]['valueList'])) {
                 $this->echoJson(['status' => 'error', 'msg' => $arr['lineAttrNameCn'] . $arr['lineAttrName'] . '该属性不可为空']);
+            }
+            if (count($attrlist[$num]['valueList']) > 1) {
+                if (isset($attrlist[$num]['valueList']['自定义'])) {
+                    unset($attrlist[$num]['valueList']['自定义']);
+                }
+            }
+            $attrlist[$num]['valueList'] = array_values($attrlist[$num]['valueList']);
+            if ($arr['type'] == '2') {
+                $attrlist[$num]['valueList'] = array_slice($attrlist[$num]['valueList'], 0, 1);
             }
             $num++;
         }
@@ -542,7 +466,7 @@ class ProductController extends ControllerBase {
             'packageStatus' => 0,
             'status' => 0
         ];
-        $getTempTableContents = MyCurl::post('http://seller.dhgate.com/syi/getTempTable.do?isblank=true', $post_data, $this->cookie);
+        $getTempTableContents = MyCurl::post('http://seller.dhgate.com/syi/getTempTable.do?isblank=true', $post_data, $this->cookie, null, 60);
         $html1 = $dom->load($getTempTableContents);
         $data['shippingScore'] = $html1->find('#shippingScore', 0)->value;
         $data['isPostAriMail'] = $html1->find('#isPostAriMail', 0)->value;
@@ -571,19 +495,31 @@ class ProductController extends ControllerBase {
         }
         $data['waterMark'] = json_encode($waterMark, JSON_UNESCAPED_UNICODE);
         $data['imglist'] = json_encode($imglistData, JSON_UNESCAPED_UNICODE);
-        $ret = MyCurl::post($drafUrl, $data, $this->cookie);
-        $ret = json_decode($ret, true);
-        if ($ret['code'] == '1000') {
-            $model = \Product::findFirst($id);
-            $model->dh_product_id = $ret['data'];
-            $model->updatetime = date('Y-m-d H:i:s');
-            $model->status = 2;
-            $model->save();
-            $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_product_id' => $model->dh_product_id, 'dh_category_id' => $model->dh_category_id]]);
-        } else {
-            $this->echoJson(['status' => 'error', 'msg' => '保存失败']);
-        }
+//        $ret = MyCurl::post($drafUrl, $data, $this->cookie);
+//        $ret = json_decode($ret, true);
+//        if ($ret['code'] == '1000') {
+//            $model = \Product::findFirst($id);
+//            $model->dh_product_id = $ret['data'];
+//            $model->updatetime = date('Y-m-d H:i:s');
+//            $model->status = 2;
+//            $model->save();
+//            $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_product_id' => $model->dh_product_id, 'dh_category_id' => $model->dh_category_id]]);
+//        } else {
+//            $this->echoJson(['status' => 'error', 'msg' => '保存失败']);
+//        }
         $this->echoJson($data);
+    }
+
+    private function setValueList($attrValId, $lineAttrvalName, $lineAttrvalNameCn, $iscustomsized, $picUrl, $brandValId = '') {
+        return [
+            'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
+            'attrValId' => $attrValId,
+            'lineAttrvalName' => $lineAttrvalName,
+            'lineAttrvalNameCn' => $lineAttrvalNameCn,
+            'iscustomsized' => $iscustomsized,
+            'picUrl' => $picUrl,
+            'brandValId' => $brandValId
+        ];
     }
 
     public function imgIntoDh($url, $token, $supplierid) {
