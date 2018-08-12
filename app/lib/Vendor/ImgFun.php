@@ -8,7 +8,7 @@ class ImgFun {
         $type = substr($url, strrpos($url, '.'));
         $filename = md5($url);
         $path = PUL_PATH . 'img/' . $filename . $type;
-        if (file_exists($path)) {
+        if (file_exists($path) && filesize($path) > 0) {
             return $filename . $type;
         }
         $ch = curl_init();

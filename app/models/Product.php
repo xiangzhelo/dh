@@ -27,16 +27,16 @@ class Product extends Model {
 
     public static function getPage($page = 1, $size = 100, $status = '', $cateIds = []) {
         $q = [
-            'columns' => 'id,source_url,source_product_id,source_product_name,source_img,dh_product_id,status,need_attribute,createtime'
+            'columns' => 'id,source_url,source_product_id,source_product_name,source_img,dh_product_id,status,need_attribute,createtime,dh_itemcode'
         ];
         if ($status !== '') {
-            if($status=='2'){
+            if ($status == '2') {
                 if (isset($q['conditions'])) {
                     $q['conditions'].=' and dh_product_id>0';
                 } else {
                     $q['conditions'] = 'dh_product_id>0';
                 }
-            }else{
+            } else {
                 if (isset($q['conditions'])) {
                     $q['conditions'].=' and status = :status:';
                     $q['bind']['status'] = $status;

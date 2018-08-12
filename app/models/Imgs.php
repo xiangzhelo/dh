@@ -9,7 +9,15 @@ class Imgs extends Model {
     }
 
     public static function createOne($source_img_url, $filename, $path, $img_data) {
-        $model = new self();
+        $model = \Imgs::findFirst([
+                    'conditions' => 'filename=:filename:',
+                    'bind' => [
+                        'filename' => $filename
+                    ]
+        ]);
+        if ($model == false) {
+            $model = new self();
+        }
         $model->source_img_url = $source_img_url;
         $model->filename = $filename;
         $model->path = $path;

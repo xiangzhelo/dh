@@ -193,7 +193,7 @@ class LexiconController extends ControllerBase {
         ]);
         $product_data = json_decode($product->product_data, true);
         if (empty($product_data['categories'])) {
-            $this->echoJson(['status' => 'error', 'msg' => '分类错误,不存在分类']);
+            $this->echoJson(['status' => 'success', 'msg' => '分类错误,不存在分类']);
         }
         $mainCategory = trim(strtolower(implode(' > ', $product_data['categories'])));
         $categoryModel = \Categories::findFirst([
@@ -203,8 +203,22 @@ class LexiconController extends ControllerBase {
                     ]
         ]);
         if ($categoryModel == false || $categoryModel->status != 200) {
-            $this->echoJson(['status' => 'error', 'msg' => '分类错误,分类未匹配']);
+            $this->echoJson(['status' => 'success', 'msg' => '分类错误,分类未匹配']);
         }
+        if (in_array($categoryModel->dh_category_id, ['141001', '141003', '141004', '141006', '141007'])) {
+            $this->Cate141($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, ['137006', '137005', '137011008', '137011005', '137010', '137011004', '137011002', '137011003'])) {
+            $this->Cate137($product, $product_data, $categoryModel);
+        } else {
+            $product->dh_category_id = $categoryModel->dh_category_id;
+            $product->status = 0;
+            $product->need_attribute = '该分类未开放';
+            $product->save();
+            $this->echoJson(['status' => 'success', 'msg' => '该分类未开放']);
+        }
+    }
+
+    private function Cate137($product, $product_data, $categoryModel) {
         $tran_product_data = $this->mergeArr($product_data, $categoryModel->info_json);
         $tran_product_data['分类id'] = $categoryModel->dh_category_id;
         $tran_product_data['分类名称'] = $categoryModel->dest_category;
@@ -222,10 +236,69 @@ class LexiconController extends ControllerBase {
         $n = 0;
         $status = 1;
         $need_attribute = '';
-        
-        $colorsList = CommonFun::arrayColumns($needJson['颜色']['valueList'], null, 'lineAttrvalName');
-        $sizesList = array_column($needJson['尺码']['valueList'], null, 'lineAttrvalName');
-        $ret = $this->colorSize($tran_product_data['属性'], $colorsList, $sizesList);
+        $ret = $this->color($tran_product_data['属性']);
+        if ($ret == false) {
+            $need_attribute.='颜色|';
+            $status = 0;
+        }
+        foreach ($needJson as $v) {
+            if (in_array($v['lineAttrNameCn'], ['颜色'])) {
+                continue;
+            }
+            $needArr[$n] = [
+                'need_key' => $v['lineAttrNameCn'],
+                'required' => $v['required'],
+                'is_exist' => '0'
+            ];
+            if (isset($tran_product_data[$v['lineAttrNameCn']])) {
+                $needArr[$n]['is_exist'] = '1';
+            }
+            if ($needArr[$n]['required'] == '1' && $needArr[$n]['is_exist'] != '1') {
+                foreach ($v['valueList'] as $v1) {
+                    if (in_array($v1['lineAttrvalNameCn'], $tran_product_data)) {
+                        $tran_product_data[$v['lineAttrNameCn']] = $v1['lineAttrvalNameCn'];
+                        $needArr[$n]['is_exist'] = '1';
+                        break;
+                    }
+                }
+            }
+            if ($needArr[$n]['required'] == '1' && $needArr[$n]['is_exist'] != '1') {
+                $tran_product_data[$v['lineAttrNameCn']] = '自定义|other';
+            }
+            $n++;
+        }
+        $tran_product_data['需要匹配'] = $needArr;
+        if ($status == '1') {
+            $tran_product_data['匹配情况'] = '匹配成功';
+        }
+        $product->tran_product_data = json_encode($tran_product_data, JSON_UNESCAPED_UNICODE);
+        $product->dh_category_id = $categoryModel->dh_category_id;
+        $product->status = $status;
+        $product->need_attribute = $need_attribute;
+        $product->save();
+        $this->echoJson(['status' => 'success', 'msg' => '成功']);
+        exit();
+    }
+
+    private function Cate141($product, $product_data, $categoryModel) {
+        $tran_product_data = $this->mergeArr($product_data, $categoryModel->info_json);
+        $tran_product_data['分类id'] = $categoryModel->dh_category_id;
+        $tran_product_data['分类名称'] = $categoryModel->dest_category;
+        $needJson = json_decode(file_get_contents('http://www.dh.com/product/getCateAttrL?catePubId=' . $categoryModel->dh_category_id), true);
+        if (!empty($needJson['data']['attributeList'])) {
+            $needJson = CommonFun::arrayColumns($needJson['data']['attributeList'], null, 'lineAttrNameCn');
+        }
+        foreach ($product_data as $key => $value) {
+            if (preg_match('/[\x7f-\xff]/', $key)) {
+                continue;
+            }
+            $this->addNeedWords($key, $value, $product->source_product_id, $tran_product_data, $tran_product_data['分类id']);
+        }
+        $needArr = [];
+        $n = 0;
+        $status = 1;
+        $need_attribute = '';
+        $ret = $this->colorSize($tran_product_data['属性']);
         if ($ret == false) {
             $need_attribute.='颜色尺码|';
             $status = 0;
@@ -252,13 +325,7 @@ class LexiconController extends ControllerBase {
                 }
             }
             if ($needArr[$n]['required'] == '1' && $needArr[$n]['is_exist'] != '1') {
-                foreach ($v['valueList'] as $v1) {
-                    if (in_array($v1['lineAttrvalNameCn'], $tran_product_data) || in_array($v1['lineAttrvalName'], $tran_product_data)) {
-                        $tran_product_data[$v['lineAttrNameCn']] = $v1['lineAttrvalNameCn'];
-                    }
-                }
-                $need_attribute.=$v['lineAttrNameCn'] . '|';
-                $status = 0;
+                $tran_product_data[$v['lineAttrNameCn']] = '自定义|other';
             }
             $n++;
         }
@@ -272,7 +339,6 @@ class LexiconController extends ControllerBase {
         $product->need_attribute = $need_attribute;
         $product->save();
         $this->echoJson(['status' => 'success', 'msg' => '成功']);
-        exit();
     }
 
     public function addNeedWords($key, $value, $source_product_id, &$tran_product_data, $catepubid) {
@@ -428,14 +494,43 @@ class LexiconController extends ControllerBase {
         }
     }
 
-    public function colorSize($colorSizeArr, $colorsList, $sizesList) {
-        $list = [];
-        foreach ($colorSizeArr as $li) {
-            if (isset($colorsList[$li['颜色']]) && isset($sizesList['US' . $li['尺码']])) {
-                return true;
+    private function color($colorSizeArr) {
+        foreach ($colorSizeArr as $key => $li) {
+            if (empty($li['颜色'])) {
+                unset($colorSizeArr[$key]);
             }
         }
-        return false;
+        if (empty($colorSizeArr)) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    private function size($colorSizeArr) {
+        foreach ($colorSizeArr as $key => $li) {
+            if (empty($li['尺码'])) {
+                unset($colorSizeArr[$key]);
+            }
+        }
+        if (empty($colorSizeArr)) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function colorSize($colorSizeArr) {
+        foreach ($colorSizeArr as $key => $li) {
+            if (empty($li['颜色']) || empty($li['尺码'])) {
+                unset($colorSizeArr[$key]);
+            }
+        }
+        if (empty($colorSizeArr)) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     public function mergeArr($arr, $jsonStr) {
@@ -794,16 +889,23 @@ class LexiconController extends ControllerBase {
 
     public function t6Action() {
         $list = \Product::find([
-                    'conditions' => 'dh_category_id>0'
+                    'conditions' => 'status=0 and need_attribute like "%颜色尺码%"'
         ]);
         foreach ($list as $item) {
-            $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
+            $queueUrl = 'http://www.dh.com/collection/hand?source_url=' . urlencode($item->source_url);
             $queue = new \Queue();
             $queue->queue_url = $queueUrl;
             $queue->status = 0;
             $queue->createtime = date('Y-m-d H:i:s');
-            $queue->contents = '分类匹配成功,产品属性匹配';
+            $queue->contents = '采集';
             $queue->save();
+//            $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
+//            $queue = new \Queue();
+//            $queue->queue_url = $queueUrl;
+//            $queue->status = 0;
+//            $queue->createtime = date('Y-m-d H:i:s');
+//            $queue->contents = '分类匹配成功,产品属性匹配';
+//            $queue->save();
         }
     }
 

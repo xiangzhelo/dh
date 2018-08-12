@@ -94,7 +94,8 @@ class CommonFun {
                 '价格单位' => self::getJsValue($contents, 'window.runParams.baseCurrencyCode'), //$html->find('.p-symbol', 0)->outertext,//->getAttribute('itemprop'),
                 '描述' => $html->find('meta[name=description]', 0)->content,
                 '关键词' => explode(',', $html->find('meta[name=keywords]', 0)->content), //
-                '折扣' => self::getJsValue($contents, 'window.runParams.discount')
+                '折扣' => self::getJsValue($contents, 'window.runParams.discount'),
+                '计量单位' => strtolower($html->find('#oddUnitName_id', 0)->value)
             ];
             $data['categories'] = [];
             if (!empty($html->find('.ui-breadcrumb a'))) {

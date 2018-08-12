@@ -25,7 +25,7 @@ class ControllerBase extends Controller {
                     ]
         ]);
         if ($cookiesModel instanceof \Cookies) {
-            if ($cookiesModel->cookies_time > (time() - 36400)) {
+            if ($cookiesModel->cookies_time > (time() - 3600)) {
                 return true;
             }
         }

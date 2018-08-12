@@ -33,7 +33,7 @@
                     <td style="text-align: center;">' . date('m-d H:i', strtotime($item['createtime'])) . '</td> 
                     <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank"><img src="' . $item['source_img'] . '" style="height:60px;margin:3px 10px;"/></a></td> 
                     <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank">' . $item['source_product_name'] . ($item['status'] == 0 ? '<span style="color:red;font-size:8px;">(' . (empty($item['need_attribute']) ? '分类|属性' : trim($item['need_attribute'], '|')) . '缺失)</span>' : '') . '</a></td> 
-                    <td style="text-align: center;" class="opt_td">' . ($item['status'] == 200 ? '已上传' : ($item['status'] == 2 ? '<a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $item['dh_product_id'] . '&inp_catepubid=' . $item['dh_product_id'] . '&isdraftbox=1" target="_blank">查看草稿</a>' : ($item['status'] == 1 ? ($item['dh_product_id'] > 0 ? '<a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $item['dh_product_id'] . '&inp_catepubid=' . $item['dh_product_id'] . '&isdraftbox=1" target="_blank">查看草稿</a>(已重新匹配)' : '匹配成功') : ($item['status'] == 400 ? '放弃' : ($item['status'] == 4 ? '等待处理' : '未匹配'))))) . $opt . '</td> 
+                    <td style="text-align: center;" class="opt_td">' . ($item['status'] == 200 ? '<a href="http://seller.dhgate.com/syi/edit.do?pid' . $item['dh_itemcode'] . '" target="_blank">查看产品</a>' : ($item['status'] == 2 ? '<a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $item['dh_product_id'] . '&inp_catepubid=' . $item['dh_product_id'] . '&isdraftbox=1" target="_blank">查看草稿</a>' : ($item['status'] == 1 ? ($item['dh_itemcode'] > 0 ? '<a href="http://seller.dhgate.com/syi/edit.do?pid' . $item['dh_itemcode'] . '" target="_blank">查看产品</a>(已重新匹配)' : ($item['dh_product_id'] > 0 ? '<a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $item['dh_product_id'] . '&inp_catepubid=' . $item['dh_product_id'] . '&isdraftbox=1" target="_blank">查看草稿</a>(已重新匹配)' : '匹配成功')) : ($item['status'] == 400 ? '放弃' : ($item['status'] == 4 ? '等待处理' : '未匹配'))))) . $opt . '</td> 
                 </tr>';
             }
             ?>
@@ -99,7 +99,11 @@
             success: function (json) {
                 var _this = $('tr[aid=' + id + '] .opt_td');
                 if (json['status'] == 'success') {
-                    _this.html('<span class="success"><a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' + json['data']['dh_product_id'] + '&inp_catepubid=' + json['data']['dh_category_id'] + '&isdraftbox=1" target="_blank">查看草稿</a></span>');
+                    if (json['data']['dh_itemcode'] == '') {
+                        _this.html('<span class="success"><a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' + json['data']['dh_product_id'] + '&inp_catepubid=' + json['data']['dh_category_id'] + '&isdraftbox=1" target="_blank">查看草稿</a></span>');
+                    } else {
+                        _this.html('<span class="success"><a href="http://seller.dhgate.com/syi/edit.do?pid=' + json['data']['dh_itemcode'] + '&inp_catepubid=' + json['data']['dh_category_id'] + '" target="_blank">查看产品</a></span>');
+                    }
                 } else {
                     _this.html('<span style="color:red;">保存失败</span>');
                 }

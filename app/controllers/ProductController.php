@@ -160,28 +160,41 @@ class ProductController extends ControllerBase {
     }
 
     public function draftAction() {
+        set_time_limit(0);
         $this->needLogin();
         $id = $this->request->get('id', 'int');
         $model = \Product::findFirst($id);
         if ($model == false || empty($model->product_data)) {
             $this->echoJson(['status' => 'error', 'msg' => '该数据未抓取']);
         }
+        if (in_array($model->dh_category_id, ['141001', '141003', '141004', '141006', '141007'])) {
+            $this->playDraftOrSave($model, $id, '141001', 1);
+        } else if (in_array($model->dh_category_id, ['137006', '137005', '137011008', '137011005', '137010', '137011004', '137011002', '137011003'])) {
+            $this->playDraftOrSave($model, $id, '137005', 1);
+        } else {
+            $this->echoJson(['status' => 'success', 'msg' => '该分类未开放']);
+        }
+    }
+
+    private function playDraftOrSave($model, $id, $cate = '141001', $isSave = '') {
         if (!empty($model->dh_product_id)) {
             $url = 'http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $model->dh_product_id . '&inp_catepubid=' . $model->dh_category_id . '&isdraftbox=1';
-            $drafUrl = 'http://seller.dhgate.com/syi/ajaxSavedraftboxV2.do?isblank=true&prodDraftId=' . $model->dh_product_id;
+            if (empty($isSave)) {
+                $drafUrl = 'http://seller.dhgate.com/syi/ajaxSavedraftboxV2.do?isblank=true&prodDraftId=' . $model->dh_product_id;
+            } else {
+                $drafUrl = 'http://seller.dhgate.com/syi/save.do';
+            }
         } else {
             $url = 'http://seller.dhgate.com/syi/edit.do?inp_catepubid=' . $model->dh_category_id;
-            $drafUrl = 'http://seller.dhgate.com/syi/ajaxSavedraftboxV2.do?isblank=true&prodDraftId=';
+            if (empty($isSave)) {
+                $drafUrl = 'http://seller.dhgate.com/syi/ajaxSavedraftboxV2.do?isblank=true&prodDraftId=';
+            } else {
+                $drafUrl = 'http://seller.dhgate.com/syi/save.do';
+            }
         }
         $productInfo = array_column($this->getCateAttrL($model->dh_category_id)['data']['attributeList'], null, 'lineAttrNameCn');
         $sourceData = json_decode($model->tran_product_data, true);
-        $suppTemplates = json_decode(MyCurl::get('http://seller.dhgate.com/syi/getSuppTemplates.do', $this->cookie), true);
-        if (isset($suppTemplates['data']) && count($suppTemplates['data']) > 0) {
-            $suppTemplates = array_column($suppTemplates['data'], null, 'modelname');
-        } else {
-            $suppTemplates = [];
-        }
-        $data = json_decode(file_get_contents(PUL_PATH . 'catepub_json/141001.json'), true);
+        $data = json_decode(file_get_contents(PUL_PATH . 'catepub_json/' . $cate . '.json'), true);
         $editContent = MyCurl::get($url, $this->cookie);
         $dom = new HtmlDom();
         $html = $dom->load($editContent);
@@ -191,52 +204,41 @@ class ProductController extends ControllerBase {
                 $data[$key] = $input->value;
             }
         }
-        $data['productname'] = mb_substr(htmlspecialchars_decode($sourceData['产品标题']), 0, 140, 'utf-8');
-        $data['forEditOldCatePubid'] = $data['catepubid'];
-        $keywordNum = 1;
-        $data['keyword1'] = false;
-        $data['keyword2'] = false;
-        $data['keyword3'] = false;
-        foreach ($sourceData['关键词'] as $k => $v) {
-            $v = trim($v);
-            if (mb_strlen($v, 'utf-8') <= 40) {
-                $data['keyword' . $keywordNum] = $v;
-                $keywordNum++;
-                if ($keywordNum > 2) {
-                    break;
-                }
-            }
+        $this->pubData($data, $sourceData, $html);
+        $this->units($data, $sourceData, $html);
+        $this->keyWords($data, $sourceData);
+        $this->skuInfo($data, $sourceData, $productInfo);
+        if (in_array($cate, ['141001'])) {
+            $this->sizeTp($data, $sourceData, $html);
         }
-        $data['brandid'] = '99';
-        $data['brandName'] = '无品牌';
-        $data['elm'] = @file_get_contents(PUL_PATH . $sourceData['产品介绍']);
-        $data['productdesc'] = 'Color may be a little different due to monitor. Pictures are only samples for reference. Due to limitations in photography and the inevitable differences in monitor settings'; //$sourceData['描述']; //
-        $data['inventoryStatus'] = '0'; //是否有备货  1、0
-        $data['inventory'] = '100';            //有备货用限制最大购买
-        $data['inventoryLocation'] = 'CN';
-        $data['sizelen'] = 30; //$sourceData['长'];
-        $data['sizewidth'] = 20; //$sourceData['宽'];
-        $data['sizeheight'] = 10; //$sourceData['高'];
-        $data['productweight'] = $sourceData['重量'];
-        $data['setdiscounttype'] = 1; //统一设置价格 ：2  分别设置：1
-        $data['noSpecPrice'] = '11';         //?????'
-        $data['packquantity'] = '1';  //???
-        $data['specselfDef'] = '[]';
-        if ($data['setdiscounttype'] == '1') {
-            $data['discountRange'] = json_encode([['startqty' => '1', 'discount' => '0'], ['startqty' => '2', 'discount' => '97']]); //$sourceData['折扣']
+        $html->clear();
+        $this->saleTp($data);
+        $this->imglist($data, $sourceData);
+        $retStr = MyCurl::post($drafUrl, $data, $this->cookie, ['X-FORWARDED-FOR:' . CommonFun::Rand_IP(), 'CLIENT-IP:' . CommonFun::Rand_IP()]);
+        $ret = json_decode($retStr, true);
+        if (empty($isSave) && $ret['code'] == '1000') {
+            $model = \Product::findFirst($id);
+            $model->dh_product_id = $ret['data'];
+            $model->updatetime = date('Y-m-d H:i:s');
+            $model->status = empty($isSave) ? 2 : 200;
+            $model->save();
+            $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_itemcode' => '', 'dh_product_id' => $model->dh_product_id, 'dh_category_id' => $model->dh_category_id]]);
+        } else if ($ret['itemcode'] > 0) {
+            $model = \Product::findFirst($id);
+            $model->dh_itemcode = $ret['itemcode'];
+            $model->updatetime = date('Y-m-d H:i:s');
+            $model->status = 200;
+            $model->save();
+            $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_itemcode' => $model->dh_itemcode, 'dh_category_id' => $model->dh_category_id]]);
         } else {
-            $data['discountRange'] = json_encode([['startqty' => '1', 'discount' => $sourceData['特价']], ['startqty' => '2', 'discount' => $sourceData['特价']]]);
+            $this->echoJson(['status' => 'error', 'msg' => '保存失败']);
         }
-        $data['measureid'] = '00000000000000000000000000000017'; //鞋子是按双  pair
-        $data['sortby'] = '1'; //销售方式  1、件  2、箱
-        $data['shippingmodelname'] = '标准运费模板';
-        $data['shippingmodelid'] = $suppTemplates['标准运费模板']['shippingmodelid'];
-        $data['isLeadingtime'] = 'on'; //是否要备货
-        $data['productInventorylist'] = '[{"class":"com.dhgate.syi.model.ProductInventoryVO","productInventoryId":"","quantity":231,"hasBuyAttr":"0","hasSaleAttr":"0","commonSpec":"0","supplierid":""}]';
-        $Color_Id = $productInfo['颜色']['attrId'];
-        $Size_Id = $productInfo['尺码']['attrId'];
-        $colorsList = CommonFun::arrayColumns($productInfo['颜色']['valueList'], null, 'lineAttrvalName');
-        $sizesList = array_column($productInfo['尺码']['valueList'], null, 'lineAttrvalName');
+        $this->echoJson($data);
+    }
+
+    private function skuInfo(&$data, $sourceData, $productInfo) {
+        $Color_Id = isset($productInfo['颜色']['attrId']) ? $productInfo['颜色']['attrId'] : '';
+        $Size_Id = isset($productInfo['尺码']['attrId']) ? $productInfo['尺码']['attrId'] : '';
         $skuInfo = [
             [
                 'class' => '###',
@@ -245,90 +247,133 @@ class ProductController extends ControllerBase {
                 'skuInfoList' => []
             ]
         ];
-        $colorValueList = [];
-        $sizeValueList = [];
-        if (isset($sourceData['适用']) && is_array($sourceData['适用']) && in_array('成人', $sourceData['适用'])) {
-            $data['issample_adult'] = '2';
+        if ($Color_Id != '') {
+            $colorsList = CommonFun::arrayColumns($productInfo['颜色']['valueList'], null, 'lineAttrvalName');
+            if (!empty($colorsList)) {
+                $colorsList = $this->color($sourceData['属性'], $colorsList);
+            }
         }
 
-        if (isset($sourceData['适用']) && is_array($sourceData['适用']) && in_array('非成人', $sourceData['适用'])) {
-            $data['issample_adult'] = '3';
+        if ($Size_Id != '') {
+            $sizesList = array_column($productInfo['尺码']['valueList'], null, 'lineAttrvalName');
+            if (!empty($sizesList)) {
+                $sizesList = $this->size($sourceData['属性'], $sizesList);
+            }
         }
+        $colorValueList = [];
+        $sizeValueList = [];
         foreach ($sourceData['属性'] as $li) {
-            if (isset($colorsList[$li['颜色']]) && isset($sizesList['US' . $li['尺码']])) {
+            if (($Color_Id == '' || isset($colorsList[$li['颜色']])) && ($Size_Id == '' || isset($sizesList[$li['尺码']]))) {
+                $ids = [];
+                $attrList = [];
+                if ($Color_Id != '') {
+                    $ids[] = $Color_Id . '_' . $colorsList[$li['颜色']]['attrValId'];
+                    $attrList[] = [
+                        'attrId' => (string) $Color_Id,
+                        'attrVid' => (string) $colorsList[$li['颜色']]['attrValId'],
+                        'type' => $productInfo['颜色']['type'],
+                        'class' => '##'
+                    ];
+                    $data['c_' . $Color_Id . '_vname'] = $Color_Id . '_' . $colorsList[$li['颜色']]['attrValId'];
+                }
+                if ($Size_Id != '') {
+                    $ids[] = $Size_Id . '_' . $sizesList[$li['尺码']]['attrValId'];
+                    $attrList[] = [
+                        'attrId' => (string) $Size_Id,
+                        'attrVid' => (string) $sizesList[$li['尺码']]['attrValId'],
+                        'type' => $productInfo['尺码']['type'],
+                        'class' => '##'
+                    ];
+                    $data['c_' . $Size_Id . '_vname'] = $Size_Id . '_' . $sizesList[$li['尺码']]['attrValId'];
+                }
                 $skuInfo[0]['skuInfoList'][] = [
                     'class' => '#',
                     'status' => ($li['库存'] > 0 ? '1' : '0'),
-                    'price' => $li['折扣价'],
-                    'stock' => (string) $li['库存'],
+                    'price' => (string) ($li['折扣价'] * 2),
+                    'stock' => '0', //(string) $li['库存'],
                     'skuCode' => '',
-                    'id' => $Color_Id . '_' . $colorsList[$li['颜色']]['attrValId'] . 'A' . $Size_Id . '_' . $sizesList['US' . $li['尺码']]['attrValId'],
-                    'attrList' => [
-                        [
-                            'attrId' => (string) $Color_Id,
-                            'attrVid' => (string) $colorsList[$li['颜色']]['attrValId'],
-                            'type' => $productInfo['颜色']['type'],
-                            'class' => '##'
-                        ], [
-                            'attrId' => (string) $Size_Id,
-                            'attrVid' => (string) $sizesList['US' . $li['尺码']]['attrValId'],
-                            'type' => $productInfo['尺码']['type'],
-                            'class' => '##'
-                        ]
-                    ]
+                    'id' => implode('A', $ids),
+                    'attrList' => $attrList
                 ];
-                if (!isset($colorValueList[$colorsList[$li['颜色']]['attrValId']])) {
-                    if (!empty($li['图片'])) {
-                        $imgData = $this->imgIntoDh($li['图片'], $data['imgtoken'], $data['supplierid']);
-                    } else {
-                        $imgData = ['l_imgurl' => ''];
-                    }
-                    $colorValueList[$colorsList[$li['颜色']]['attrValId']] = [
-                        'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
-                        'attrValId' => $colorsList[$li['颜色']]['attrValId'],
-                        'lineAttrvalName' => $colorsList[$li['颜色']]['lineAttrvalName'],
-                        'lineAttrvalNameCn' => $colorsList[$li['颜色']]['lineAttrvalNameCn'],
-                        'iscustomsized' => $colorsList[$li['颜色']]['iscustomsized'],
-                        'picUrl' => $imgData['l_imgurl'],
-                        'brandValId' => ''
-                    ];
+                if ($Color_Id != '') {
+                    $this->colorValueList($data, $colorValueList, $colorsList, $li);
                 }
-                if (!isset($sizeValueList[$sizesList['US' . $li['尺码']]['attrValId']])) {
-                    $sizeValueList[$sizesList['US' . $li['尺码']]['attrValId']] = [
-                        'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
-                        'attrValId' => $sizesList['US' . $li['尺码']]['attrValId'],
-                        'lineAttrvalName' => $sizesList['US' . $li['尺码']]['lineAttrvalName'],
-                        'lineAttrvalNameCn' => $sizesList['US' . $li['尺码']]['lineAttrvalNameCn'],
-                        'iscustomsized' => $sizesList['US' . $li['尺码']]['iscustomsized'],
-                        'picUrl' => '', //$sizesList['US' . $li['尺码']]['picUrl'],
-                        'brandValId' => ''
-                    ];
+                if ($Size_Id != '') {
+                    $this->sizeValueList($sizeValueList, $sizesList, $li);
                 }
             }
         }
         if (count($skuInfo[0]['skuInfoList']) == 0) {
             $this->echoJson(['status' => 'error', 'msg' => '价格表不可为空']);
         }
+        $data['proSkuInfo'] = json_encode($skuInfo, JSON_UNESCAPED_UNICODE);
         $attrlist = [];
-        $attrlist[] = [
-            'class' => 'com.dhgate.syi.model.ProductAttributeVO',
-            'attrId' => $Color_Id,
-            'attrName' => $productInfo['颜色']['lineAttrName'],
-            'isbrand' => $productInfo['颜色']['isbrand'],
-            'valueList' => array_values($colorValueList),
-        ];
-        $attrlist[] = [
-            'class' => 'com.dhgate.syi.model.ProductAttributeVO',
-            'attrId' => $Size_Id,
-            'attrName' => $productInfo['尺码']['lineAttrName'],
-            'isbrand' => $productInfo['尺码']['isbrand'],
-            'valueList' => array_values($sizeValueList)
-        ];
-        unset($productInfo['颜色']);
-        unset($productInfo['尺码']);
+        if ($Color_Id != '') {
+            $this->colorAttr($attrlist, $Color_Id, $productInfo, $colorValueList);
+        }
+        if ($Size_Id != '') {
+            $this->sizeAttr($attrlist, $Size_Id, $productInfo, $sizeValueList);
+        }
+        $this->attr($data, $productInfo, $attrlist, $sourceData);
+        $data['attrlist'] = json_encode(array_values($attrlist), JSON_UNESCAPED_UNICODE);
+    }
+
+    private function sizeValueList(&$sizeValueList, $sizesList, $li) {
+        if (!isset($sizeValueList[$sizesList[$li['尺码']]['attrValId']])) {
+            $sizeValueList[$sizesList[$li['尺码']]['attrValId']] = [
+                'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
+                'attrValId' => $sizesList[$li['尺码']]['attrValId'],
+                'lineAttrvalName' => $sizesList[$li['尺码']]['lineAttrvalName'],
+                'lineAttrvalNameCn' => $sizesList[$li['尺码']]['lineAttrvalNameCn'],
+                'iscustomsized' => $sizesList[$li['尺码']]['iscustomsized'],
+                'picUrl' => '', //$sizesList['US' . $li['尺码']]['picUrl'],
+                'brandValId' => ''
+            ];
+        }
+    }
+
+    private function colorValueList($data, &$colorValueList, $colorsList, $li) {
+        if (!isset($colorValueList[$colorsList[$li['颜色']]['attrValId']])) {
+            if (!empty($li['图片'])) {
+                $imgData = $this->imgIntoDh($li['图片'], $data['imgtoken'], $data['supplierid']);
+            } else {
+                $imgData = ['l_imgurl' => ''];
+            }
+            $colorValueList[$colorsList[$li['颜色']]['attrValId']] = [
+                'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
+                'attrValId' => $colorsList[$li['颜色']]['attrValId'],
+                'lineAttrvalName' => $colorsList[$li['颜色']]['lineAttrvalName'],
+                'lineAttrvalNameCn' => $colorsList[$li['颜色']]['lineAttrvalNameCn'],
+                'iscustomsized' => $colorsList[$li['颜色']]['iscustomsized'],
+                'picUrl' => $imgData['l_imgurl'],
+                'brandValId' => ''
+            ];
+        }
+    }
+
+    private function sizeTp(&$data, $sourceData, $html) {
+        $szTemplateClassIdStr = $html->find('#szTemplateClassIdStr', 0)->value;
+        $getSzSellerTemplate = json_decode(MyCurl::post('http://seller.dhgate.com/syi/getSzSellerTemplate.do', ['classIdStr' => $szTemplateClassIdStr], $this->cookie), true);
+        if (isset($getSzSellerTemplate['data']) && count($getSzSellerTemplate['data']) > 0) {
+            $getSzSellerTemplate = $getSzSellerTemplate['data']; //array_column($getSzSellerTemplate['data'], 'templateNameCn');
+        } else {
+            $getSzSellerTemplate = [];
+        }
+        if ((isset($sourceData['适用']) && is_array($sourceData['适用']) && in_array('women', $sourceData['适用'])) || in_array('女士', $sourceData)) {
+            $template = 0; //'women shoe';
+        } else {
+            $template = 1; //'men shoe';
+        }
+        $data['sellerSzTemplateId'] = $getSzSellerTemplate[$template]['szId'];
+        $data['sellerTemplateName'] = $template == 1 ? 'men show' : 'women shoe';
+    }
+
+    private function attr(&$data, &$productInfo, &$attrlist, $sourceData) {
         $num = 2;
         foreach ($productInfo as $key => $arr) {
-            $isbreak = false;
+            if (in_array($key, ['颜色', '尺码'])) {
+                continue;
+            }
             $attrlist[$num] = [
                 'class' => 'com.dhgate.syi.model.ProductAttributeVO',
                 'attrId' => $arr['attrId'],
@@ -414,39 +459,61 @@ class ProductController extends ControllerBase {
             if ($arr['required'] != '0' && empty($attrlist[$num]['valueList'])) {
                 $this->echoJson(['status' => 'error', 'msg' => $arr['lineAttrNameCn'] . $arr['lineAttrName'] . '该属性不可为空']);
             }
+            if (count($attrlist[$num]['valueList']) == 0) {
+                unset($attrlist[$num]);
+                continue;
+            }
             if (count($attrlist[$num]['valueList']) > 1) {
                 if (isset($attrlist[$num]['valueList']['自定义'])) {
                     unset($attrlist[$num]['valueList']['自定义']);
                 }
             }
             $attrlist[$num]['valueList'] = array_values($attrlist[$num]['valueList']);
-            if ($arr['type'] == '2') {
+            $l = count($attrlist[$num]['valueList']);
+            if ($arr['type'] == '2' && $l > 0) {
                 $attrlist[$num]['valueList'] = array_slice($attrlist[$num]['valueList'], 0, 1);
+                $data['c_' . $arr['attrId'] . '_vname'] = (string) $attrlist[$num]['valueList'][0]['attrValId'];
+            } else if ($arr['type'] == '1' && $l > 0) {
+                $data['c_' . $arr['attrId'] . '_vname'] = $arr['attrId'] . '_' . $attrlist[$num]['valueList'][$l - 1]['attrValId'];
+            } else {
+                $data['c_' . $arr['attrId'] . '_vname'] = '';
             }
             $num++;
         }
+    }
 
-        $data['attrlist'] = json_encode($attrlist, JSON_UNESCAPED_UNICODE);
-        $data['vaildday'] = 30; //产品有效期
-        $data['proSkuInfo'] = json_encode($skuInfo, JSON_UNESCAPED_UNICODE);
-        $data['selectSzTemplateType'] = '0';
-        $szTemplateClassIdStr = $html->find('#szTemplateClassIdStr', 0)->value;
-        $data['s_albums_winid'] = $html->find('#s_albums_winid option', 0)->value;
-        $data['puw_albums_winid'] = $html->find('#puw_albums_winid option', 0)->value;
-        $html->clear();
-        $getSzSellerTemplate = json_decode(MyCurl::post('http://seller.dhgate.com/syi/getSzSellerTemplate.do', ['classIdStr' => $szTemplateClassIdStr], $this->cookie), true);
-        if (isset($getSzSellerTemplate['data']) && count($getSzSellerTemplate['data']) > 0) {
-            $getSzSellerTemplate = $getSzSellerTemplate['data']; //array_column($getSzSellerTemplate['data'], 'templateNameCn');
-        } else {
-            $getSzSellerTemplate = [];
+    private function imglist(&$data, $sourceData) {
+        $imglistData = [];
+        $waterMark = [];
+        foreach ($sourceData['产品图片'] as $key => $img) {
+            $imgData = $this->imgIntoDh($img, $data['imgtoken'], $data['supplierid']);
+            if ($imgData['result'] != '1') {
+                $this->echoJson(['status' => 'error', 'msg' => '图片上传失败']);
+            }
+            $waterMark[] = [
+                'url' => $imgData['l_imgurl'],
+                'pos' => '5',
+                'class' => 'com.dhgate.syi.model.PrintPostVO'
+            ];
+            if ($key == 0) {
+                $data['inp_imgurl'] = $imgData['l_imgurl'];
+                $data['inp_imgmd5'] = $imgData['l_imgmd5'];
+            } else {
+                $imglistData[] = [
+                    'class' => 'com.dhgate.syi.model.TdProductAttachVO',
+                    'fileurl' => $imgData['l_imgurl'],
+                    'imgmd5' => $imgData['l_imgmd5'],
+                    'sequence' => (string) ($key - 1),
+                    'filename' => ''
+                ];
+            }
         }
-        if ((isset($sourceData['适用']) && is_array($sourceData['适用']) && in_array('women', $sourceData['适用'])) || in_array('女士', $sourceData)) {
-            $template = 0; //'women shoe';
-        } else {
-            $template = 1; //'men shoe';
-        }
-        $data['sellerSzTemplateId'] = $getSzSellerTemplate[$template]['szId'];
-        $data['sellerTemplateName'] = $template == 1 ? 'men show' : 'women shoe';
+        $data['waterMark'] = json_encode($waterMark, JSON_UNESCAPED_UNICODE);
+        $data['imglist'] = json_encode($imglistData, JSON_UNESCAPED_UNICODE);
+    }
+
+    private function saleTp(&$data) {
+        $dom = new HtmlDom();
         $getSaleTemplateList = json_decode(MyCurl::get('http://seller.dhgate.com/syi/getSaleTemplateList.do', $this->cookie), true);
         if (isset($getSaleTemplateList['data']) && count($getSaleTemplateList['data']) > 0) {
             $getSaleTemplateList = array_column($getSaleTemplateList['data'], null, 'name');
@@ -471,43 +538,183 @@ class ProductController extends ControllerBase {
         $data['shippingScore'] = $html1->find('#shippingScore', 0)->value;
         $data['isPostAriMail'] = $html1->find('#isPostAriMail', 0)->value;
         $html1->clear();
-        $imglistData = [];
-        $waterMark = [];
-        foreach ($sourceData['产品图片'] as $key => $img) {
-            $imgData = $this->imgIntoDh($img, $data['imgtoken'], $data['supplierid']);
-            $waterMark[] = [
-                'url' => $imgData['l_imgurl'],
-                'pos' => '5',
-                'class' => 'com.dhgate.syi.model.PrintPostVO'
-            ];
-            if ($key == 0) {
-                $data['inp_imgurl'] = $imgData['l_imgurl'];
-                $data['inp_imgmd5'] = $imgData['l_imgmd5'];
+    }
+
+    private function sizeAttr(&$attrlist, $Size_Id, $productInfo, $sizeValueList) {
+        $attrlist[] = [
+            'class' => 'com.dhgate.syi.model.ProductAttributeVO',
+            'attrId' => $Size_Id,
+            'attrName' => $productInfo['尺码']['lineAttrName'],
+            'isbrand' => $productInfo['尺码']['isbrand'],
+            'valueList' => array_values($sizeValueList)
+        ];
+        unset($productInfo['尺码']);
+    }
+
+    private function colorAttr(&$attrlist, $Color_Id, $productInfo, $colorValueList) {
+        $attrlist[] = [
+            'class' => 'com.dhgate.syi.model.ProductAttributeVO',
+            'attrId' => $Color_Id,
+            'attrName' => $productInfo['颜色']['lineAttrName'],
+            'isbrand' => $productInfo['颜色']['isbrand'],
+            'valueList' => array_values($colorValueList),
+        ];
+        unset($productInfo['颜色']);
+    }
+
+    private function color($colorSizeArr, $colorsList) {
+        $ysList = array_unique(array_column($colorSizeArr, '颜色'));
+        $cList = [];
+        foreach ($ysList as $k => $v) {
+            $ispipei = 0;
+            if (isset($colorsList[$v])) {
+                $cList[$v] = $colorsList[$v];
+                $ispipei = 1;
+                unset($colorsList[$v]);
             } else {
-                $imglistData[] = [
-                    'class' => 'com.dhgate.syi.model.TdProductAttachVO',
-                    'fileurl' => $imgData['l_imgurl'],
-                    'imgmd5' => $imgData['l_imgmd5'],
-                    'sequence' => $key - 1,
-                    'filename' => ''
-                ];
+                foreach ($colorsList as $key => $value) {
+                    if (strpos($key, $v) !== false || strpos($v, $key) !== false) {
+                        $value['lineAttrvalName'] = isset($colorSizeArr[$k]['颜色orign']) ? $colorSizeArr[$k]['颜色orign'] : $v;
+                        $cList[$v] = $value;
+                        $ispipei = 1;
+                        unset($colorsList[$key]);
+                        break;
+                    }
+                }
+                if ($ispipei == 0) {
+                    foreach ($colorsList as $key => $value) {
+                        if (!in_array($key, $ysList)) {
+                            $value['lineAttrvalName'] = isset($colorSizeArr[$k]['颜色orign']) ? $colorSizeArr[$k]['颜色orign'] : $v;
+                            $cList[$v] = $value;
+                            $ispipei = 1;
+                            unset($colorsList[$key]);
+                            break;
+                        }
+                    }
+                }
             }
         }
-        $data['waterMark'] = json_encode($waterMark, JSON_UNESCAPED_UNICODE);
-        $data['imglist'] = json_encode($imglistData, JSON_UNESCAPED_UNICODE);
-//        $ret = MyCurl::post($drafUrl, $data, $this->cookie);
-//        $ret = json_decode($ret, true);
-//        if ($ret['code'] == '1000') {
-//            $model = \Product::findFirst($id);
-//            $model->dh_product_id = $ret['data'];
-//            $model->updatetime = date('Y-m-d H:i:s');
-//            $model->status = 2;
-//            $model->save();
-//            $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_product_id' => $model->dh_product_id, 'dh_category_id' => $model->dh_category_id]]);
-//        } else {
-//            $this->echoJson(['status' => 'error', 'msg' => '保存失败']);
-//        }
-        $this->echoJson($data);
+        return $cList;
+    }
+
+    private function size($colorSizeArr, $sizesList) {
+        $cmList = array_unique(array_column($colorSizeArr, '尺码'));
+        $sList = [];
+        foreach ($cmList as $v) {
+            if (isset($sizesList[$v]) || isset($sizesList['US' . $v])) {
+                $sList[$v] = isset($sizesList[$v]) ? $sizesList[$v] : $sizesList['US' . $v];
+                $ispipei = 1;
+                unset($sizesList[$v]);
+            } else {
+                foreach ($sizesList as $key => $value) {
+                    if (strpos($key, $v) !== false || strpos($v, $key) !== false) {
+                        $sList[$v] = $value;
+                        $ispipei = 1;
+                        unset($sizesList[$key]);
+                        break;
+                    }
+                }
+                if ($ispipei == 0) {
+                    foreach ($sizesList as $key => $value) {
+                        if (!in_array($key, $cmList)) {
+                            $value['lineAttrvalName'] = $v;
+                            $sList[$v] = $value;
+                            unset($sizesList[$key]);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return $sList;
+    }
+
+    private function pubData(&$data, $sourceData, $html) {
+        foreach ($html->find('form input') as $input) {
+            $key = $input->name;
+            if (isset($data[$key])) {
+                $data[$key] = $input->value;
+            }
+        }
+        $suppTemplates = json_decode(MyCurl::get('http://seller.dhgate.com/syi/getSuppTemplates.do', $this->cookie), true);
+        if (isset($suppTemplates['data']) && count($suppTemplates['data']) > 0) {
+            $suppTemplates = array_column($suppTemplates['data'], null, 'modelname');
+        } else {
+            $suppTemplates = [];
+        }
+        $data['productname'] = mb_substr(htmlspecialchars_decode($sourceData['产品标题']), 0, 140, 'utf-8');
+        $data['forEditOldCatePubid'] = $data['catepubid'];
+        $data['brandid'] = '99';
+        $data['brandName'] = '无品牌';
+        $data['elm'] = @file_get_contents(PUL_PATH . $sourceData['产品介绍']);
+        $data['productdesc'] = 'Color may be a little different due to monitor. Pictures are only samples for reference. Due to limitations in photography and the inevitable differences in monitor settings'; //$sourceData['描述']; //
+        $data['inventoryStatus'] = '0'; //是否有备货  1、0
+        $data['inventory'] = '100';            //有备货用限制最大购买
+        $data['inventoryLocation'] = 'CN';
+        $data['sizelen'] = '30.0'; //$sourceData['长'];
+        $data['sizewidth'] = '20.0'; //$sourceData['宽'];
+        $data['sizeheight'] = '10.0'; //$sourceData['高'];
+        $data['productweight'] = $sourceData['重量'];
+        $data['setdiscounttype'] = 1; //统一设置价格 ：2  分别设置：1
+        $data['noSpecPrice'] = '11';         //?????'
+        $data['packquantity'] = '1';  //???
+        $data['specselfDef'] = '[]';
+        if ($data['setdiscounttype'] == '1') {
+            $data['discountRange'] = json_encode([['startqty' => '1', 'discount' => '0'], ['startqty' => '2', 'discount' => '3']]); //$sourceData['折扣']
+        } else {
+            $data['discountRange'] = json_encode([['startqty' => '1', 'discount' => $sourceData['特价']], ['startqty' => '2', 'discount' => $sourceData['特价']]]);
+        }
+        $data['sortby'] = '1'; //销售方式  1、件  2、箱
+        $data['shippingmodelname'] = '标准运费模板';
+        $data['shippingmodelid'] = $suppTemplates['标准运费模板']['shippingmodelid'];
+        $data['isLeadingtime'] = 'on'; //是否要备货
+        $data['productInventorylist'] = '[{"class":"com.dhgate.syi.model.ProductInventoryVO","productInventoryId":"","quantity":231,"hasBuyAttr":"0","hasSaleAttr":"0","commonSpec":"0","supplierid":""}]';
+        if (isset($sourceData['适用']) && is_array($sourceData['适用']) && in_array('成人', $sourceData['适用'])) {
+            $data['issample_adult'] = '2';
+        }
+        if (isset($sourceData['适用']) && is_array($sourceData['适用']) && in_array('非成人', $sourceData['适用'])) {
+            $data['issample_adult'] = '3';
+        }
+        $data['vaildday'] = '30'; //产品有效期
+        $data['selectSzTemplateType'] = '0';
+        $data['s_albums_winid'] = $html->find('#s_albums_winid option', 0)->value;
+        $data['puw_albums_winid'] = $html->find('#puw_albums_winid option', 0)->value;
+        $data['maxSaleQty'] = '10000';
+        $data['startqty'] = '2';
+        $data['discount'] = '3';
+        $data['prospeclist'] = '[]';
+        $data['cmSzTableJson'] = '';
+        $data['cmszAdviseTableJson'] = '';
+    }
+
+    private function units(&$data, $sourceData, $html) {
+        $units = [];
+        foreach ($html->find('select[name=measureid] option') as $op) {
+            if (!empty($op->value)) {
+                $text = $op->plaintext;
+                preg_match('/[A-Za-z]+/', $text, $arr);
+                $key = strtolower($arr[0]);
+                $units[$key] = $op->value;
+            }
+        }
+        $data['measureid'] = isset($sourceData['计量单位']) && isset($units[$sourceData['计量单位']]) ? $units[$sourceData['计量单位']] : '00000000000000000000000000000003'; //包
+    }
+
+    private function keyWords(&$data, $sourceData) {
+        $keywordNum = 1;
+        $data['keyword1'] = false;
+        $data['keyword2'] = false;
+        $data['keyword3'] = false;
+        foreach ($sourceData['关键词'] as $k => $v) {
+            $v = trim($v);
+            if (mb_strlen($v, 'utf-8') <= 40) {
+                $data['keyword' . $keywordNum] = $v;
+                $keywordNum++;
+                if ($keywordNum > 3) {
+                    break;
+                }
+            }
+        }
     }
 
     private function setValueList($attrValId, $lineAttrvalName, $lineAttrvalNameCn, $iscustomsized, $picUrl, $brandValId = '') {
@@ -515,9 +722,9 @@ class ProductController extends ControllerBase {
             'class' => 'com.dhgate.syi.model.ProductAttributeValueVO',
             'attrValId' => $attrValId,
             'lineAttrvalName' => $lineAttrvalName,
-            'lineAttrvalNameCn' => $lineAttrvalNameCn,
+            'lineAttrvalNameCn' => '', //$lineAttrvalNameCn,
             'iscustomsized' => $iscustomsized,
-            'picUrl' => $picUrl,
+            'picUrl' => empty($picUrl) ? '' : $picUrl,
             'brandValId' => $brandValId
         ];
     }
@@ -533,7 +740,7 @@ class ProductController extends ControllerBase {
         ]);
         if ($img != false) {
             $img_data = json_decode($img->img_data, true);
-            if (isset($img_data['result'])) {
+            if (isset($img_data['result']) && $img_data['result'] == 1) {
                 return $img_data;
             }
         }
