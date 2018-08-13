@@ -149,7 +149,7 @@ class ProductController extends ControllerBase {
                         $words->save();
                     } else {
                         if ($words->status != 200) {
-                            file_get_contents('http://www.dh.com/lexicon/update?id=' . $words->id . '&dest_words=' . $dest_words);
+                            file_get_contents(MY_DOMAIN . '/lexicon/update?id=' . $words->id . '&dest_words=' . $dest_words);
                         }
                     }
                 }
@@ -795,7 +795,7 @@ class ProductController extends ControllerBase {
         $eNum = 0;
         foreach ($ids as $v) {
             $queue = new \Queue();
-            $queue->queue_url = 'http://www.dh.com/product/draft?id=' . $v . '&isSave=' . $isSave . '&current_user=' . $this->username;
+            $queue->queue_url = MY_DOMAIN . '/product/draft?id=' . $v . '&isSave=' . $isSave . '&current_user=' . $this->username;
             $queue->status = 0;
             $queue->createtime = date('Y-m-d H:i:s');
             $queue->contents = $content;
@@ -814,7 +814,7 @@ class ProductController extends ControllerBase {
 
     public function getCate($catePubId, &$list) {
         $list[] = $catePubId;
-        $json = json_decode(file_get_contents('http://www.dh.com/product/getCateAttr?catePubId=' . $catePubId), true);
+        $json = json_decode(file_get_contents(MY_DOMAIN . '/product/getCateAttr?catePubId=' . $catePubId), true);
         foreach ($json['data'] as $v) {
             if ($v['leaf'] == '0') {
                 $this->getCate($v['catePubId'], $list);

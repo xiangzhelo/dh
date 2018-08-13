@@ -291,7 +291,7 @@
     $(function () {
         $('#important').change(function () {
             var im = $(this).val();
-            var url = 'http://www.dh.com/lexicon/index?status=<?= $status ?>&important=' + im;
+            var url = '/lexicon/index?status=<?= $status ?>&important=' + im;
             window.location.href = url;
         });
     });

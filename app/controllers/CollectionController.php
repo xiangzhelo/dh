@@ -54,7 +54,7 @@ class CollectionController extends ControllerBase {
                             ]
                 ]);
                 if ($cateModel != false && $cateModel->status == 200) {
-                    $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $data['产品id'];
+                    $queueUrl = MY_DOMAIN . '/lexicon/wordsMatch?source_product_id=' . $data['产品id'];
                     $qCount = \Queue::count([
                                 'conditions' => 'queue_url=:queue_url: and status=0',
                                 'bind' => [
@@ -186,7 +186,7 @@ class CollectionController extends ControllerBase {
         if (!empty($html->find('#list-items li .img a,.list-items li .img a'))) {
             foreach ($html->find('#list-items li .img a,.list-items li .img a') as $a) {
                 $href = $a->href;
-                $queueUrl = 'http://www.dh.com/collection/hand?source_url=' . urlencode($href) . '&collection_new=1';
+                $queueUrl = MY_DOMAIN . '/collection/hand?source_url=' . urlencode($href) . '&collection_new=1';
                 $queue = new \Queue();
                 $queue->queue_url = $queueUrl;
                 $queue->status = 0;
@@ -208,7 +208,7 @@ class CollectionController extends ControllerBase {
     public function queueAction() {
         set_time_limit(0);
         $queues = \Queue::find([
-                    'conditions' => 'queue_url like "http://www.dh.com/lexicon/wordsMatch%" and status=200'
+                    'conditions' => 'queue_url like "' . MY_DOMAIN . '/lexicon/wordsMatch%" and status=200'
         ]);
         $mcurl = new \Lib\Vendor\Mcurl();
         $mcurl->maxThread = 3;

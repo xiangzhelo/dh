@@ -64,7 +64,7 @@ class LexiconController extends ControllerBase {
             foreach ($needList as $item) {
                 $item->status = 200;
                 $item->save();
-                $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
+                $queueUrl = MY_DOMAIN . '/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
                 $qCount = \Queue::count([
                             'conditions' => 'queue_url=:queue_url: and status=0',
                             'bind' => [
@@ -132,7 +132,7 @@ class LexiconController extends ControllerBase {
                 $num = 0;
                 $ids = [];
                 foreach ($words as $item) {
-                    $url = 'http://www.dh.com/lexicon/giveUpWords?id=' . $item['id'];
+                    $url = MY_DOMAIN . '/lexicon/giveUpWords?id=' . $item['id'];
                     $mcurl->add(['url' => $url, 'args' => ['id' => $item['id']]]);
                     $num++;
                     $ids[] = $item['id'];
@@ -222,7 +222,7 @@ class LexiconController extends ControllerBase {
         $tran_product_data = $this->mergeArr($product_data, $categoryModel->info_json);
         $tran_product_data['分类id'] = $categoryModel->dh_category_id;
         $tran_product_data['分类名称'] = $categoryModel->dest_category;
-        $needJson = json_decode(file_get_contents('http://www.dh.com/product/getCateAttrL?catePubId=' . $categoryModel->dh_category_id), true);
+        $needJson = json_decode(file_get_contents(MY_DOMAIN . '/product/getCateAttrL?catePubId=' . $categoryModel->dh_category_id), true);
         if (!empty($needJson['data']['attributeList'])) {
             $needJson = CommonFun::arrayColumns($needJson['data']['attributeList'], null, 'lineAttrNameCn');
         }
@@ -284,7 +284,7 @@ class LexiconController extends ControllerBase {
         $tran_product_data = $this->mergeArr($product_data, $categoryModel->info_json);
         $tran_product_data['分类id'] = $categoryModel->dh_category_id;
         $tran_product_data['分类名称'] = $categoryModel->dest_category;
-        $needJson = json_decode(file_get_contents('http://www.dh.com/product/getCateAttrL?catePubId=' . $categoryModel->dh_category_id), true);
+        $needJson = json_decode(file_get_contents(MY_DOMAIN . '/product/getCateAttrL?catePubId=' . $categoryModel->dh_category_id), true);
         if (!empty($needJson['data']['attributeList'])) {
             $needJson = CommonFun::arrayColumns($needJson['data']['attributeList'], null, 'lineAttrNameCn');
         }
@@ -569,7 +569,7 @@ class LexiconController extends ControllerBase {
             foreach ($needList as $item) {
                 $item->status = 200;
                 $item->save();
-                $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
+                $queueUrl = MY_DOMAIN . '/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
                 $qCount = \Queue::count([
                             'conditions' => 'queue_url=:queue_url: and status=0',
                             'bind' => [
@@ -695,7 +695,7 @@ class LexiconController extends ControllerBase {
                         echo '<br/>';
                     } else {
                         foreach ($wordsArr as $v1) {
-                            $curl->add(['url' => 'http://www.dh.com/lexicon/wordSim?words1=' . $v2 . '&words2=' . $v1, 'args' => [$v2, $v1]], [$this, 't2']);
+                            $curl->add(['url' => MY_DOMAIN . '/lexicon/wordSim?words1=' . $v2 . '&words2=' . $v1, 'args' => [$v2, $v1]], [$this, 't2']);
                             $num++;
                             if ($num > $max) {
                                 break;
@@ -732,13 +732,13 @@ class LexiconController extends ControllerBase {
         foreach ($wordsList as $item) {
             $arr1 = explode(':', $item->orign_words);
             foreach ($json['data']['attributeList'] as $arr) {
-                $curl->add(['url' => 'http://www.dh.com/lexicon/wordSim?words1=' . $arr1[0] . '&words2=' . $arr['lineAttrNameCn']], [$this, 't2']);
+                $curl->add(['url' => MY_DOMAIN . '/lexicon/wordSim?words1=' . $arr1[0] . '&words2=' . $arr['lineAttrNameCn']], [$this, 't2']);
                 if (!empty($arr['valueList'])) {
                     foreach ($arr['valueList'] as $v) {
                         $str = $arr['lineAttrName'] . ':' . $v['lineAttrvalName'];
 //                        BaiduFun::wordSimEmbedding($item->orgin_words, $str);
 
-                        $curl->add(['url' => 'http://www.dh.com/lexicon/wordSim?words1=' . $arr1[1] . '&words2=' . $v['lineAttrvalNameCn'], 'args' => [$arr1[1], $v['lineAttrvalNameCn']]], [$this, 't2']);
+                        $curl->add(['url' => MY_DOMAIN . '/lexicon/wordSim?words1=' . $arr1[1] . '&words2=' . $v['lineAttrvalNameCn'], 'args' => [$arr1[1], $v['lineAttrvalNameCn']]], [$this, 't2']);
                         if ($num > $max) {
                             break;
                         }
@@ -892,14 +892,14 @@ class LexiconController extends ControllerBase {
                     'conditions' => 'status=0 and need_attribute like "%颜色尺码%"'
         ]);
         foreach ($list as $item) {
-            $queueUrl = 'http://www.dh.com/collection/hand?source_url=' . urlencode($item->source_url);
+            $queueUrl = MY_DOMAIN . '/collection/hand?source_url=' . urlencode($item->source_url);
             $queue = new \Queue();
             $queue->queue_url = $queueUrl;
             $queue->status = 0;
             $queue->createtime = date('Y-m-d H:i:s');
             $queue->contents = '采集';
             $queue->save();
-//            $queueUrl = 'http://www.dh.com/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
+//            $queueUrl = MY_DOMAIN . '/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
 //            $queue = new \Queue();
 //            $queue->queue_url = $queueUrl;
 //            $queue->status = 0;
@@ -912,7 +912,7 @@ class LexiconController extends ControllerBase {
     public function t7Action() {
         $list = \Product::find();
         foreach ($list as $item) {
-            $queueUrl = 'http://www.dh.com/collection/hand?source_url=' . urlencode($item->source_url);
+            $queueUrl = MY_DOMAIN . '/collection/hand?source_url=' . urlencode($item->source_url);
             $queue = new \Queue();
             $queue->queue_url = $queueUrl;
             $queue->status = 0;
@@ -954,7 +954,7 @@ class LexiconController extends ControllerBase {
                     ]);
                     if ($keyvalue != false) {
                         $dest_words = $keyvalue->keycn . ':' . $keyvalue->valuecn;
-                        file_get_contents('http://www.dh.com/lexicon/update?id=' . $model->id . '&dest_words=' . $dest_words);
+                        file_get_contents(MY_DOMAIN . '/lexicon/update?id=' . $model->id . '&dest_words=' . $dest_words);
                         $num++;
                     }
                 }
@@ -979,7 +979,7 @@ class LexiconController extends ControllerBase {
                 } else {
                     $dest_words = $hasKey->keycn . ':自定义|' . $arr[1];
                 }
-                file_get_contents('http://www.dh.com/lexicon/update?id=' . $model->id . '&dest_words=' . $dest_words);
+                file_get_contents(MY_DOMAIN . '/lexicon/update?id=' . $model->id . '&dest_words=' . $dest_words);
                 $num++;
             }
         }
@@ -1005,7 +1005,7 @@ class LexiconController extends ControllerBase {
                 $model->save($v);
             }
         }
-        file_get_contents('http://www.dh.com/lexicon/matchKeyvalue?key=' . strtolower($key1));
+        file_get_contents(MY_DOMAIN . '/lexicon/matchKeyvalue?key=' . strtolower($key1));
         echo 'success';
         exit();
     }
