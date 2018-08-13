@@ -2,6 +2,8 @@
 
 namespace Dh\Controllers;
 
+use Lib\Vendor\CommonFun;
+
 /**
  * Description of SettingController
  *
@@ -209,7 +211,18 @@ class SettingController extends ControllerBase {
 
     public function setUserAction() {
         $user = $this->request->get('user', 'string', 'lakeone');
-        setcookie('current_user', $user, time() + 31536000, '/', '.dh.com');
+        $hasLogin = $this->hasLogin($user);
+        if ($hasLogin == false && $this->users[$user]) {
+            $this->loginDh($user, $this->users[$user]);
+        }
+        $this->cookie = $this->getUserCookie($user);
+        $this->supplierid = CommonFun::getCookieValueByKey($this->cookie, 'supplierid');
+        setcookie('current_user', $user, time() + 3600 * 24 * 365, '/', '.dhgate.com');
+        preg_match_all('/([^;]+);/i', $this->cookie, $arr);
+        foreach ($arr[1] as $v) {
+            $v1 = explode('=', $v);
+            setcookie($v1[0], $v1[1], time() + 3600 * 24, '/', '.dhgate.com');
+        }
         $this->echoJson(['status' => 'success', 'msg' => '设置成功']);
     }
 }

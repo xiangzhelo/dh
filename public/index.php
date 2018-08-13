@@ -16,7 +16,7 @@ error_reporting(E_ALL ^ E_DEPRECATED);
 try {
     define('APP_PATH', realpath('..') . '/app/');
     define('PUL_PATH', realpath('..') . '/public/');
-    define('MY_DOMAIN', 'http://my.dhgate.com');
+    define('MY_DOMAIN', 'http://ht.dhgate.com');
     $config_path = 'config/config.ini';
     // Read the configuration
     $config = new ConfigIni(APP_PATH . $config_path);

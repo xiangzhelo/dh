@@ -21,6 +21,27 @@ class ProductController extends ControllerBase {
         $this->supplierid = CommonFun::getCookieValueByKey($this->cookie, 'supplierid');
     }
 
+    public function getGroupAction() {
+        $this->needLogin();
+        preg_match_all('/([^;]+);/i', $this->cookie, $arr);
+        foreach ($arr[1] as $v) {
+            $v1 = explode('=', $v);
+            setcookie($v1[0], $v1[1], time() + 3600 * 24, '/', '.dhgate.com');
+        }
+        $url = 'http://seller.dhgate.com/prodmanage/akey/getGroup.do?_=' . time();
+        $curl = new MyCurl();
+        $jsonStr = $curl->get($url, $this->cookie);
+        $json = json_decode($jsonStr, true)['result'];
+        $productgroupid = isset($_COOKIE['myproductgroupid']) ? $_COOKIE['myproductgroupid'] : '';
+        $this->echoJson(['status' => 'success', 'msg' => '获取成功', 'data' => $json, 'productgroupid' => $productgroupid]);
+    }
+
+    public function setGroupAction() {
+        $groupid = $this->request->get('groupid', 'string', '');
+        setcookie('myproductgroupid', $groupid, time() + 3600 * 24 * 365, '/', '.dhgate.com');
+        exit();
+    }
+
     public function indexAction() {
         $page = $this->request->get('page', 'int', 1);
         $status = $this->request->get('status', 'string', '');
@@ -30,7 +51,7 @@ class ProductController extends ControllerBase {
             $this->getCate($catePubId, $cateIds);
         }
         $size = 100;
-        $pages = \Product::getPage($page, $size, $status, $cateIds);
+        $pages = \Product::getPage($page, $size, $status, $cateIds, $this->username);
         $this->view->pages = $pages;
         $this->view->page = $page;
         $this->view->status = $status;
@@ -161,6 +182,10 @@ class ProductController extends ControllerBase {
         set_time_limit(0);
         $id = $this->request->get('id', 'int');
         $isSave = $this->request->get('isSave', 'int', 0);
+        $productgroupid = $this->request->get('productgroupid', 'string', '');
+        if (empty($productgroupid)) {
+            $productgroupid = isset($_COOKIE['myproductgroupid']) ? $_COOKIE['myproductgroupid'] : '';
+        }
         $model = \Product::findFirst($id);
         if (!empty($model->current_user)) {
             $this->username = $model->current_user;
@@ -170,15 +195,15 @@ class ProductController extends ControllerBase {
             $this->echoJson(['status' => 'error', 'msg' => '该数据未抓取']);
         }
         if (in_array($model->dh_category_id, ['141001', '141003', '141004', '141006', '141007'])) {
-            $this->playDraftOrSave($model, $id, '141001', $isSave);
+            $this->playDraftOrSave($model, $id, '141001', $isSave, $productgroupid);
         } else if (in_array($model->dh_category_id, ['137006', '137005', '137011008', '137011005', '137010', '137011004', '137011002', '137011003'])) {
-            $this->playDraftOrSave($model, $id, '137005', $isSave);
+            $this->playDraftOrSave($model, $id, '137005', $isSave, $productgroupid);
         } else {
             $this->echoJson(['status' => 'success', 'msg' => '该分类未开放']);
         }
     }
 
-    private function playDraftOrSave($model, $id, $cate = '141001', $isSave = '') {
+    private function playDraftOrSave($model, $id, $cate = '141001', $isSave = '', $productgroupid = '') {
         if (!empty($model->dh_product_id)) {
             $url = 'http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $model->dh_product_id . '&inp_catepubid=' . $model->dh_category_id . '&isdraftbox=1';
             if (empty($isSave)) {
@@ -207,6 +232,10 @@ class ProductController extends ControllerBase {
             }
         }
         $this->pubData($data, $sourceData, $html);
+        $this->group($data, $editContent);
+        if (!empty($productgroupid)) {
+            $data['productgroupid'] = $productgroupid;
+        }
         $this->units($data, $sourceData, $html);
         $this->keyWords($data, $sourceData);
         $this->skuInfo($data, $sourceData, $productInfo);
@@ -605,6 +634,7 @@ class ProductController extends ControllerBase {
         $cmList = array_unique(array_column($colorSizeArr, '尺码'));
         $sList = [];
         foreach ($cmList as $v) {
+            $ispipei = 0;
             if (isset($sizesList[$v]) || isset($sizesList['US' . $v])) {
                 $sList[$v] = isset($sizesList[$v]) ? $sizesList[$v] : $sizesList['US' . $v];
                 $ispipei = 1;
@@ -689,6 +719,24 @@ class ProductController extends ControllerBase {
         $data['prospeclist'] = '[]';
         $data['cmSzTableJson'] = '';
         $data['cmszAdviseTableJson'] = '';
+    }
+
+    private function group(&$data, $content) {
+        $g_category = CommonFun::getJsJson($content, 'g_category');
+        $groupdata = CommonFun::getJsJson($content, 'GROUP_LIST');
+        $group = [];
+        if (isset($groupdata['data']['result']) && count($groupdata['data']['result']) > 0) {
+            $group = array_column($groupdata['data']['result'], null, 'groupName');
+        }
+        if (isset($group[$g_category['pubNameCn']])) {
+            $data['productgroupid'] = $group[$g_category['pubNameCn']]['groupId'];
+        } else {
+            foreach ($group as $key => $value) {
+                if (strpos($g_category['pubNameCn'], $key) !== false || strpos($key, $g_category['pubNameCn']) !== false) {
+                    $data['productgroupid'] = $value['groupId'];
+                }
+            }
+        }
     }
 
     private function units(&$data, $sourceData, $html) {
@@ -788,6 +836,7 @@ class ProductController extends ControllerBase {
         $ids = $this->request->get('ids');
         $content = $this->request->get('content', 'string');
         $isSave = $this->request->get('isSave', 'int', 0);
+        $productgroupid = isset($_COOKIE['myproductgroupid']) ? $_COOKIE['myproductgroupid'] : '';
         if (empty($ids)) {
             $this->echoJson(['status' => 'error', 'msg' => '添加产品数为空']);
         }
@@ -795,7 +844,7 @@ class ProductController extends ControllerBase {
         $eNum = 0;
         foreach ($ids as $v) {
             $queue = new \Queue();
-            $queue->queue_url = MY_DOMAIN . '/product/draft?id=' . $v . '&isSave=' . $isSave . '&current_user=' . $this->username;
+            $queue->queue_url = MY_DOMAIN . '/product/draft?id=' . $v . '&isSave=' . $isSave . '&current_user=' . $this->username . '&productgroupid=' . $productgroupid;
             $queue->status = 0;
             $queue->createtime = date('Y-m-d H:i:s');
             $queue->contents = $content;

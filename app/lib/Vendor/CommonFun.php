@@ -42,7 +42,7 @@ class CommonFun {
     }
 
     public static function getCookieValueByKey($cookie, $key) {
-        preg_match('/' . $key . '=([^;]);/i', $cookie, $arr);
+        preg_match('/' . $key . '=([^;]+);/i', $cookie, $arr);
         if (isset($arr[1])) {
             return $arr[1];
         } else {

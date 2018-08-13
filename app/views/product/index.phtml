@@ -23,6 +23,7 @@
         </div>
     </div>
     <button class="ui primary button" style="margin-top:10px;" onclick="addProducts(0);">批量草稿</button><button class="ui primary button" style="margin-top:10px;" onclick="addProducts(1);">批量添加</button><span id="cateSelect"></span><button class="ui primary button" style="margin-top:10px;" onclick="searchCateSelect();">搜索</button>
+    默认选择分组 ： <select class="groupSelectBox" id="groupid" onchange="setGroup();" style="height: 30px;"></select>
     <table class="ui celled striped table">
         <thead><tr><th style="text-align: center;width: 60px;"><a href="javascript:;" onclick="quanxuan();">全选</a></th><th style="text-align: center;width: 60px;">ID</th><th style="text-align: center;width: 100px;">创建时间</th><th style="text-align: center;">图片</th><th style="text-align: center;">标题</th><th style="text-align: center;width: 100px;">账号</th><th style="text-align: center;width: 150px;">状态</th></tr></thead>
         <tbody>
@@ -47,7 +48,7 @@
                 . ($item['status'] == 4 ? '等待处理' : '')
                 . ($item['status'] == 2 ? '<a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $item['dh_product_id'] . '&inp_catepubid=' . $item['dh_product_id'] . '&isdraftbox=1" target="_blank">查看草稿</a>' : '')
                 . ($item['status'] == 1 ? ($item['dh_itemcode'] > 0 ? '<a href="http://seller.dhgate.com/syi/edit.do?pid' . $item['dh_itemcode'] . '" target="_blank">查看产品</a>(已重新匹配)' : ($item['dh_product_id'] > 0 ? '<a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $item['dh_product_id'] . '&inp_catepubid=' . $item['dh_product_id'] . '&isdraftbox=1" target="_blank">查看草稿</a>(已重新匹配)' : '匹配成功')) : '')
-                . ($item['status'] === 0 ? '未匹配' : '')
+                . ($item['status'] == 0 ? '未匹配' : '')
                 . $opt . '</td> 
                 </tr>';
             }
@@ -101,10 +102,52 @@
     </div>
 </div>
 <script>
-    $(function () {
+    $(function () {//groupid
         getCate(0);
+        $.ajax({
+            url: '/product/getGroup',
+            type: 'GET',
+            dataType: 'json',
+            success: function (json) {
+                if (json['status'] == 'success') {
+                    var html = '<option value="">未分组</option>';
+                    html += getGroup(json['data'], 0);
+                    $('#groupid').html(html);
+                    if ($('#groupid option[value=' + json['productgroupid'] + ']').length > 0) {
+                        $('#groupid').val(json['productgroupid']);
+                    } else {
+                        $('#groupid').val('');
+                        setGroup();
+                    }
+                }
+            }
+        });
     });
+    function setGroup() {
+        var groupid = $('#groupid').val();
+        $.ajax({
+            url: '/product/setGroup',
+            type: 'GET',
+            dataType: 'json',
+            data: {groupid: groupid},
+            async: false,
+            success: function () {}
+        });
+    }
+
+    function getGroup(arr, dep) {
+        var html = '';
+        $.each(arr, function (k, v) {
+            html += '<option value="' + v['key'] + '">' + (dep > 0 ? (new Array(dep + 1).join('|—— ')) : '') + v['value'] + '</option>';
+            html += getGroup(v['menu'], dep + 1);
+        });
+        return html;
+    }
     function sub_draft(id, isSave) {
+        var str = isSave == 1 ? '确定提交产品' : '确定保存草稿';
+        if (confirm(str) == false) {
+            return false;
+        }
         $.ajax({
             url: '/product/draft',
             type: 'POST',
@@ -134,6 +177,10 @@
         var content = '添加产品草稿';
         if (isSave == 1) {
             content = '添加产品';
+        }
+        var str = isSave == 1 ? '确定批量提交产品' : '确定批量保存草稿';
+        if (confirm(str) == false) {
+            return false;
         }
         $('.ids:checked').each(function () {
             var id = $(this).val();

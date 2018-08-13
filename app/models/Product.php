@@ -25,7 +25,7 @@ class Product extends Model {
         }
     }
 
-    public static function getPage($page = 1, $size = 100, $status = '', $cateIds = []) {
+    public static function getPage($page = 1, $size = 100, $status = '', $cateIds = [], $username = '') {
         $q = [
             'columns' => 'id,source_url,source_product_id,source_product_name,source_img,dh_product_id,status,need_attribute,createtime,dh_itemcode,current_user'
         ];
@@ -46,6 +46,16 @@ class Product extends Model {
                 }
             }
         }
+        if (!empty($username)) {
+            if (isset($q['conditions'])) {
+                $q['conditions'].=' and (current_user="" or isnull(current_user) or current_user=:current_user:)';
+                $q['bind']['current_user'] = $username;
+            } else {
+                $q['conditions'] = '(current_user="" or isnull(current_user) or current_user=:current_user:)';
+                $q['bind'] = ['current_user' => $username];
+            }
+        }
+
         if (!empty($cateIds)) {
             if (isset($q['conditions'])) {
                 $q['conditions'].=' and dh_category_id in ({dh_category_id:array})';

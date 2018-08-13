@@ -52,6 +52,8 @@
                     success: function (json) {
                         if (json['status'] != 'success') {
                             alert('用户设置错误');
+                        } else {
+                            window.location.reload();
                         }
                     }
                 });
