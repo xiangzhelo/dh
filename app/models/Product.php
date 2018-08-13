@@ -27,7 +27,7 @@ class Product extends Model {
 
     public static function getPage($page = 1, $size = 100, $status = '', $cateIds = []) {
         $q = [
-            'columns' => 'id,source_url,source_product_id,source_product_name,source_img,dh_product_id,status,need_attribute,createtime,dh_itemcode'
+            'columns' => 'id,source_url,source_product_id,source_product_name,source_img,dh_product_id,status,need_attribute,createtime,dh_itemcode,current_user'
         ];
         if ($status !== '') {
             if ($status == '2') {

@@ -11,8 +11,6 @@ class ProductController extends ControllerBase {
 
     public $cookie;
     public $supplierid;
-    public $username = 'lakeone';
-    public $password = 'lk123456';
 
     public function needLogin() {
         $hasLogin = $this->hasLogin($this->username);
@@ -161,16 +159,20 @@ class ProductController extends ControllerBase {
 
     public function draftAction() {
         set_time_limit(0);
-        $this->needLogin();
         $id = $this->request->get('id', 'int');
+        $isSave = $this->request->get('isSave', 'int', 0);
         $model = \Product::findFirst($id);
+        if (!empty($model->current_user)) {
+            $this->username = $model->current_user;
+        }
+        $this->needLogin();
         if ($model == false || empty($model->product_data)) {
             $this->echoJson(['status' => 'error', 'msg' => '该数据未抓取']);
         }
         if (in_array($model->dh_category_id, ['141001', '141003', '141004', '141006', '141007'])) {
-            $this->playDraftOrSave($model, $id, '141001', 1);
+            $this->playDraftOrSave($model, $id, '141001', $isSave);
         } else if (in_array($model->dh_category_id, ['137006', '137005', '137011008', '137011005', '137010', '137011004', '137011002', '137011003'])) {
-            $this->playDraftOrSave($model, $id, '137005', 1);
+            $this->playDraftOrSave($model, $id, '137005', $isSave);
         } else {
             $this->echoJson(['status' => 'success', 'msg' => '该分类未开放']);
         }
@@ -220,12 +222,14 @@ class ProductController extends ControllerBase {
             $model = \Product::findFirst($id);
             $model->dh_product_id = $ret['data'];
             $model->updatetime = date('Y-m-d H:i:s');
+            $model->current_user = empty($model->current_user) ? $this->username : $model->current_user;
             $model->status = empty($isSave) ? 2 : 200;
             $model->save();
             $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_itemcode' => '', 'dh_product_id' => $model->dh_product_id, 'dh_category_id' => $model->dh_category_id]]);
         } else if ($ret['itemcode'] > 0) {
             $model = \Product::findFirst($id);
             $model->dh_itemcode = $ret['itemcode'];
+            $model->current_user = empty($model->current_user) ? $this->username : $model->current_user;
             $model->updatetime = date('Y-m-d H:i:s');
             $model->status = 200;
             $model->save();
@@ -783,6 +787,7 @@ class ProductController extends ControllerBase {
     public function addProductAction() {
         $ids = $this->request->get('ids');
         $content = $this->request->get('content', 'string');
+        $isSave = $this->request->get('isSave', 'int', 0);
         if (empty($ids)) {
             $this->echoJson(['status' => 'error', 'msg' => '添加产品数为空']);
         }
@@ -790,7 +795,7 @@ class ProductController extends ControllerBase {
         $eNum = 0;
         foreach ($ids as $v) {
             $queue = new \Queue();
-            $queue->queue_url = 'http://www.dh.com/product/draft?id=' . $v;
+            $queue->queue_url = 'http://www.dh.com/product/draft?id=' . $v . '&isSave=' . $isSave . '&current_user=' . $this->username;
             $queue->status = 0;
             $queue->createtime = date('Y-m-d H:i:s');
             $queue->contents = $content;

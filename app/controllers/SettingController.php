@@ -207,4 +207,9 @@ class SettingController extends ControllerBase {
         $this->echoJson(['status' => 'success', 'msg' => $msg]);
     }
 
+    public function setUserAction() {
+        $user = $this->request->get('user', 'string', 'lakeone');
+        setcookie('current_user', $user, time() + 31536000, '/', '.dh.com');
+        $this->echoJson(['status' => 'success', 'msg' => '设置成功']);
+    }
 }

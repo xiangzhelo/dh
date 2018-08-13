@@ -26,11 +26,36 @@
                 <a href="/lexicon/index" class="item <?php echo (isset($_GET['_url']) && $_GET['_url'] == '/lexicon/index' ? 'active' : ''); ?>">属性匹配</a>
                 <a href="/product/index" class="item <?php echo (isset($_GET['_url']) && $_GET['_url'] == '/product/index' ? 'active' : ''); ?>">产品保存</a>
                 <a href="/setting/index" class="item <?php echo (isset($_GET['_url']) && $_GET['_url'] == '/setting/index' ? 'active' : ''); ?>">设置</a>
+                <a href="javascript:;" class="item userSpan">
+                    敦煌用户 ： 
+                    <select class="userSelectBox" onchange="userChange($(this));" style="height: 30px;">
+                        <?php foreach ($users as $k => $u) { ?>
+                            <option value="<?php echo $k; ?>" <?php echo $k == $current_user ? 'selected="selected"' : ''; ?>><?php echo $k; ?></option>
+                        <?php } ?>
+                    </select>
+                </a>
             </div>
         </div>
         <div class="ui main container">
             <?php $this->flash->output() ?>
             <?php echo $this->getContent(); ?>
         </div>
+        <script>
+            function userChange(_this) {
+                var user = _this.val();
+                $.ajax({
+                    url: '/setting/setUser',
+                    type: 'GET',
+                    dataType: 'json',
+                    data: {user: user},
+                    async: false,
+                    success: function (json) {
+                        if (json['status'] != 'success') {
+                            alert('用户设置错误');
+                        }
+                    }
+                });
+            }
+        </script>
     </body>
 </html>

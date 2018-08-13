@@ -7,8 +7,25 @@ use Lib\Vendor\CommonFun;
 
 class ControllerBase extends Controller {
 
+    public $username = 'lakeone';
+    public $password = 'lk123456';
+
     public function initialize() {
-        
+        $users = [
+            'lakeone' => 'lk123456',
+            'ceshi'=>'123'
+        ];
+        if (isset($_COOKIE['current_user']) && isset($users[$_COOKIE['current_user']])) {
+            $this->username = $_COOKIE['current_user'];
+            $this->password = $users[$_COOKIE['current_user']];
+        }
+
+        if (isset($_GET['current_user']) && isset($users[$_GET['current_user']])) {
+            $this->username = $_GET['current_user'];
+            $this->password = $users[$_GET['current_user']];
+        }
+        $this->view->users = $users;
+        $this->view->current_user = $this->username;
     }
 
     protected function echoJson($data) {
