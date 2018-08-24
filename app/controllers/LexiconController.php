@@ -9,13 +9,6 @@ use Lib\Vendor\CommonFun;
 class LexiconController extends ControllerBase {
 
     public function indexAction() {
-//        $cateCount = \Categories::count([
-//                    'conditions' => 'status=0'
-//        ]);
-//        if ($cateCount) {
-//            header('location:/lexicon/categoriesIndex');
-//            exit();
-//        }
         $page = $this->request->get('page', 'int', 1);
         $status = $this->request->get('status', 'string', '');
         $like_words = $this->request->get('like_words', 'string', '');
@@ -205,10 +198,54 @@ class LexiconController extends ControllerBase {
         if ($categoryModel == false || $categoryModel->status != 200) {
             $this->echoJson(['status' => 'success', 'msg' => '分类错误,分类未匹配']);
         }
+        $cate014 = ['014028007', '014028004', '014028008002', '014028005', '014028003001', '014028006', '014028002', '014028009',
+            '014028001001', '014028001002', '014028010', '014026018', '014026016', '014026003', '014026004', '014026011', '014026014',
+            '014026005001', '014026012', '014026013', '014026007', '014026006', '014026010', '014026002003', '014026002001', '014026002004',
+            '014026020001', '014026020003', '014027001006', '014027001001', '014027002012', '014027002001'];
+        $cate006 = ['006003112', '006003115', '006003115', '006011116', '006011117', '006007176', '006007167']; //玩具礼物
+        $cate142 = ['142006003', '142006005', '142006001', '142003011', '142003003003']; //母婴用品
+        $cate135 = ['135005002', '135010002', '135010003']; //手机和手机附件(, '135005006'手机膜不适配)
+        $cate008 = ['008002']; //消费类电子（'008178', 耳机与耳塞）
+        $cate140 = [ '140005']; //时尚配件('140002001', 不适配)
+        $cate004 = ['004002002', '004002008', '004002011', '004006001', '004006008', '004007001', '004007008']; //珠宝
+        $cate005 = ['005002', '005001']; //表
+        $cate143 = ['143103113102', '143103113107']; //汽配（'143106001',车罩不适配）
+        $cate024 = ['024029008', '024020005007', '024029001002', '024029001001', '024029005004', '024029003', '024029005003', '024026007001'
+            , '024026007005', '024003003017', '024026008001', '014026010', '014028011', '024003019005', '024020004003', '024020005003'
+            , '024020005002', '024020005001', '024020005007', '024034008001', '024034007002', '024033', '024023002005', '024023002004'
+            , '024023001015', '024023001020', '024023001005', '024023001013', '024023001003', '024023001001', '024037']; //运动与户外产品
         if (in_array($categoryModel->dh_category_id, ['141001', '141003', '141004', '141006', '141007'])) {
-            $this->Cate141($product, $product_data, $categoryModel);
+            $this->matchProduct($product, $product_data, $categoryModel);
         } else if (in_array($categoryModel->dh_category_id, ['137006', '137005', '137011008', '137011005', '137010', '137011004', '137011002', '137011003'])) {
-            $this->Cate137($product, $product_data, $categoryModel);
+            $this->matchProduct($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, $cate014)) {
+            $this->matchProduct($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, $cate006)) {
+            $this->cate006($categoryModel, $product_data);
+            $this->matchProduct($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, $cate142)) {
+            $this->cate142($categoryModel, $product_data);
+            $this->matchProduct($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, $cate135)) {
+            $this->cate135($categoryModel, $product_data);
+            $this->matchProduct($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, $cate008)) {
+            $this->matchProduct($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, $cate140)) {
+            $this->cate140($categoryModel, $product_data);
+            $this->matchProduct($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, $cate004)) {
+            $this->cate004($categoryModel, $product_data);
+            $this->matchProduct($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, $cate005)) {
+            $this->cate005($categoryModel, $product_data);
+            $this->matchProduct($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, $cate143)) {
+            $this->cate143($categoryModel, $product_data);
+            $this->matchProduct($product, $product_data, $categoryModel);
+        } else if (in_array($categoryModel->dh_category_id, $cate024)) {
+            $this->cate024($categoryModel, $product_data);
+            $this->matchProduct($product, $product_data, $categoryModel);
         } else {
             $product->dh_category_id = $categoryModel->dh_category_id;
             $product->status = 0;
@@ -218,73 +255,268 @@ class LexiconController extends ControllerBase {
         }
     }
 
-    private function Cate137($product, $product_data, $categoryModel) {
-        $tran_product_data = $this->mergeArr($product_data, $categoryModel->info_json);
-        $tran_product_data['分类id'] = $categoryModel->dh_category_id;
-        $tran_product_data['分类名称'] = $categoryModel->dest_category;
-        $needJson = json_decode(file_get_contents(MY_DOMAIN . '/product/getCateAttrL?catePubId=' . $categoryModel->dh_category_id), true);
-        if (!empty($needJson['data']['attributeList'])) {
-            $needJson = CommonFun::arrayColumns($needJson['data']['attributeList'], null, 'lineAttrNameCn');
-        }
-        foreach ($product_data as $key => $value) {
-            if (preg_match('/[\x7f-\xff]/', $key)) {
-                continue;
-            }
-            $this->addNeedWords($key, $value, $product->source_product_id, $tran_product_data, $tran_product_data['分类id']);
-        }
-        $needArr = [];
-        $n = 0;
-        $status = 1;
-        $need_attribute = '';
-        $ret = $this->color($tran_product_data['属性']);
-        if ($ret == false) {
-            $need_attribute.='颜色|';
-            $status = 0;
-        }
-        foreach ($needJson as $v) {
-            if (in_array($v['lineAttrNameCn'], ['颜色'])) {
-                continue;
-            }
-            $needArr[$n] = [
-                'need_key' => $v['lineAttrNameCn'],
-                'required' => $v['required'],
-                'is_exist' => '0'
-            ];
-            if (isset($tran_product_data[$v['lineAttrNameCn']])) {
-                $needArr[$n]['is_exist'] = '1';
-            }
-            if ($needArr[$n]['required'] == '1' && $needArr[$n]['is_exist'] != '1') {
-                foreach ($v['valueList'] as $v1) {
-                    if (in_array($v1['lineAttrvalNameCn'], $tran_product_data)) {
-                        $tran_product_data[$v['lineAttrNameCn']] = $v1['lineAttrvalNameCn'];
-                        $needArr[$n]['is_exist'] = '1';
-                        break;
-                    }
+    private function cate004($categoryModel, &$product_data) {
+        if (in_array($categoryModel->dh_category_id, ['004006001', '004006008'])) {
+            if (count($product_data['属性']) > 0) {
+                foreach ($product_data['属性'] as $k => $v) {
+                    $product_data['属性'][$k]['颜色orign'] = trim((isset($v['颜色orign']) ? $v['颜色orign'] : '')
+                            . (!empty($v['长度']) ? ' ' . $v['长度'] : ''));
                 }
             }
-            if ($needArr[$n]['required'] == '1' && $needArr[$n]['is_exist'] != '1') {
-                $tran_product_data[$v['lineAttrNameCn']] = '自定义|other';
-            }
-            $n++;
         }
-        $tran_product_data['需要匹配'] = $needArr;
-        if ($status == '1') {
-            $tran_product_data['匹配情况'] = '匹配成功';
-        }
-        $product->tran_product_data = json_encode($tran_product_data, JSON_UNESCAPED_UNICODE);
-        $product->dh_category_id = $categoryModel->dh_category_id;
-        $product->status = $status;
-        $product->need_attribute = $need_attribute;
-        $product->save();
-        $this->echoJson(['status' => 'success', 'msg' => '成功']);
-        exit();
     }
 
-    private function Cate141($product, $product_data, $categoryModel) {
+    private function cate143($categoryModel, &$product_data) {
+        if (in_array($categoryModel->dh_category_id, ['143103113102', '143103113107'])) {
+            if (count($product_data['属性']) > 0) {
+                foreach ($product_data['属性'] as $k => $v) {
+                    $product_data['属性'][$k]['颜色orign'] = $v['颜色orign']
+                            . (!empty($v['尺码']) ? ' ' . $v['尺码'] : '')
+                            . (!empty($v['尺寸']) ? ' ' . $v['尺寸'] : '')
+                            . (!empty($v['长度']) ? ' ' . $v['长度'] : '')
+                            . (!empty($v['材质']) ? ' ' . $v['材质'] : '');
+                }
+            }
+        }
+    }
+
+    private function cate140($categoryModel, &$product_data) {
+        if (in_array($categoryModel->dh_category_id, ['140002001'])) {
+            if (count($product_data['属性']) > 0) {
+                foreach ($product_data['属性'] as $k => $v) {
+                    if (!isset($v['颜色']) || empty($v['颜色'])) {
+                        $product_data['属性'][$k]['颜色'] = '自定义|pic';
+                        $product_data['属性'][$k]['图片'] = array_slice($product_data['产品图片'], -1, 1)[0];
+                        $product_data['属性'][$k]['颜色id'] = '自定义|pic';
+                        $product_data['属性'][$k]['颜色orign'] = '自定义|pic';
+                    }
+                    $product_data['属性'][$k]['材质'] = isset($product_data['style']) ? $product_data['style'] : 'other';
+                    $product_data['属性'][$k]['尺寸'] = $v['长度'];
+                }
+            } else {
+                $product_data['属性'][] = [
+                    "颜色" => "自定义|pic",
+                    "图片" => array_slice($product_data['产品图片'], -1, 1)[0],
+                    "颜色id" => "自定义|pic",
+                    "颜色orign" => "自定义|pic",
+                    "尺码id" => "",
+                    "尺码" => "",
+                    "尺寸id" => "",
+                    "尺寸" => "",
+                    "可用量" => "100",
+                    "库存" => "100",
+                    "折扣价" => $product_data['价格'],
+                    "原价" => $product_data['价格'],
+                    "材质" => isset($product_data['style']) ? $product_data['style'] : 'other',
+                    "长度" => ""
+                ];
+            }
+        }
+        if (in_array($categoryModel->dh_category_id, ['024020005001'])) {
+            foreach ($product_data['属性'] as $k => $v) {
+                if (empty($v['尺寸'])) {
+                    $product_data['属性'][$k]['尺寸'] = 'other';
+                }
+            }
+        }
+        if (in_array($categoryModel->dh_category_id, ['024026007001', '024026007005'])) {
+            foreach ($product_data['属性'] as $k => $v) {
+                if (empty($v['尺寸'])) {
+                    $product_data['属性'][$k]['尺寸'] = $v['尺码'];
+                }
+            }
+        }
+        if (in_array($categoryModel->dh_category_id, ['024020004003', '024034008001', '024023001003'])) {
+            $product_data['color'] = [];
+            foreach ($product_data['属性'] as $k => $v) {
+                $product_data['color'][] = $v['颜色'];
+            }
+        }
+    }
+
+    private function cate024($categoryModel, &$product_data) {
+        if (in_array($categoryModel->dh_category_id, ['024029008', '024029005004', '024034008001', '024034007002', '024023001020', '024023001005', '024023001013', '024023001003'])) {
+            if (count($product_data['属性']) > 0) {
+                foreach ($product_data['属性'] as $k => $v) {
+                    if (!isset($v['颜色']) || empty($v['颜色'])) {
+                        $product_data['属性'][$k]['颜色'] = 'other' . $k;
+                        $product_data['属性'][$k]['图片'] = '';
+                        $product_data['属性'][$k]['颜色id'] = 'other' . $k;
+                    }
+                    $product_data['属性'][$k]['颜色orign'] = trim((isset($v['颜色orign']) ? $v['颜色orign'] : '')
+                            . (!empty($v['尺码']) ? ' ' . $v['尺码'] : '')
+                            . (!empty($v['尺寸']) ? ' ' . $v['尺寸'] : '')
+                            . (!empty($v['长度']) ? ' ' . $v['长度'] : '')
+                            . (!empty($v['材质']) ? ' ' . $v['材质'] : ''), ' ');
+                }
+            } else {
+                $product_data['属性'][] = [
+                    "颜色" => "pic",
+                    "图片" => array_slice($product_data['产品图片'], -1, 1)[0],
+                    "颜色id" => "pic",
+                    "颜色orign" => "pic",
+                    "尺码id" => "",
+                    "尺码" => "",
+                    "尺寸id" => "",
+                    "尺寸" => "",
+                    "可用量" => "100",
+                    "库存" => "100",
+                    "折扣价" => $product_data['价格'],
+                    "原价" => $product_data['价格'],
+                    "材质" => "",
+                    "长度" => ""
+                ];
+            }
+        }
+        if (in_array($categoryModel->dh_category_id, ['024020005001'])) {
+            foreach ($product_data['属性'] as $k => $v) {
+                if (empty($v['尺寸'])) {
+                    $product_data['属性'][$k]['尺寸'] = 'other';
+                }
+            }
+        }
+        if (in_array($categoryModel->dh_category_id, ['024026007001', '024026007005'])) {
+            foreach ($product_data['属性'] as $k => $v) {
+                if (empty($v['尺寸'])) {
+                    $product_data['属性'][$k]['尺寸'] = $v['尺码'];
+                }
+            }
+        }
+        if (in_array($categoryModel->dh_category_id, ['024020004003', '024034008001', '024023001003'])) {
+            $product_data['color'] = [];
+            foreach ($product_data['属性'] as $k => $v) {
+                $product_data['color'][] = $v['颜色'];
+            }
+        }
+    }
+
+    private function cate005($categoryModel, &$product_data) {
+        if (in_array($categoryModel->dh_category_id, ['005002'])) {
+            if (count($product_data['属性']) == 0) {
+                $product_data['属性'][] = [
+                    "颜色" => "pic",
+                    "图片" => array_slice($product_data['产品图片'], -1, 1)[0],
+                    "颜色id" => "pic",
+                    "颜色orign" => "pic",
+                    "尺码id" => "",
+                    "尺码" => "",
+                    "尺寸id" => "",
+                    "尺寸" => "",
+                    "可用量" => "100",
+                    "库存" => "100",
+                    "折扣价" => $product_data['价格'],
+                    "原价" => $product_data['价格'],
+                    "材质" => "",
+                    "长度" => ""
+                ];
+            } else {
+                foreach ($product_data['属性'] as $k => $v) {
+                    if (!isset($v['颜色']) || empty($v['颜色'])) {
+                        $product_data['属性'][$k]['颜色'] = 'pic';
+                        $product_data['属性'][$k]['图片'] = array_slice($product_data['产品图片'], -1, 1)[0];
+                        $product_data['属性'][$k]['颜色id'] = 'pic';
+                        $product_data['属性'][$k]['颜色orign'] = 'pic';
+                    }
+                }
+            }
+        }
+        if (isset($product_data['dial diameter'])) {
+            if (strpos($product_data['dial diameter'], 'inch') !== false) {
+                $product_data['dial diameter'] = number_format(str_replace('inch', 'mm', $product_data['dial diameter']) * 25.4, 2) . 'mm';
+            }
+            $product_data['表面直径'] = $product_data['dial diameter'];
+        } else {
+            $product_data['表面直径'] = '0';
+        }
+    }
+
+    private function cate006(&$categoryModel, $product_data) {
+        if (in_array($categoryModel->dh_category_id, ['006003115'])) {
+            if (!empty($product_data['属性'])) {
+                foreach ($product_data['属性'] as $v) {
+                    if (!empty($v['颜色'])) {
+                        return;
+                    }
+                }
+            }
+        } else if (in_array($categoryModel->dh_category_id, ['006011126', '006011116', '006011117'])) {
+            if (!empty($product_data['属性'])) {
+                foreach ($product_data['属性'] as $v) {
+                    if (!empty($v['颜色']) && !empty($v['尺寸'])) {
+                        return;
+                    }
+                }
+            }
+        }
+        $categoryModel->dh_category_id = '006003112';
+    }
+
+    private function cate135($categoryModel, &$product_data) {
+        if (in_array($categoryModel->dh_category_id, ['135005006'])) {
+            $type = (isset($product_data['type']) ? $product_data['type'] : '') . (isset($product_data['item type']) ? $product_data['item type'] : '');
+            $title = strtolower($product_data['产品标题']);
+            if (strpos($type, 'body') !== false) {
+                $product_data['类型'] = '全身贴膜';
+            } elseif (strpos($type, 'front') !== false) {
+                $product_data['类型'] = '前贴膜';
+            } elseif (strpos($type, 'mirror') !== false) {
+                $product_data['类型'] = '镜面';
+            } elseif (strpos($type, 'glare') !== false) {
+                $product_data['类型'] = '防偷窥';
+            } elseif (strpos($type, 'scratch') !== false) {
+                $product_data['类型'] = '抗划痕';
+            } elseif (strpos($title, 'body') !== false) {
+                $product_data['类型'] = '全身贴膜';
+            } elseif (strpos($title, 'front') !== false) {
+                $product_data['类型'] = '前贴膜';
+            } elseif (strpos($title, 'mirror') !== false) {
+                $product_data['类型'] = '镜面';
+            } elseif (strpos($title, 'glare') !== false) {
+                $product_data['类型'] = '防偷窥';
+            } elseif (strpos($title, 'scratch') !== false) {
+                $product_data['类型'] = '抗划痕';
+            }
+            if (isset($product_data['类型'])) {
+                foreach ($product_data['属性'] as $key => $value) {
+                    $product_data['属性'][$key]['类型'] = $product_data['类型'];
+                }
+            }
+        }
+    }
+
+    private function cate142($categoryModel, &$product_data) {
+        if (in_array($categoryModel->dh_category_id, ['142003011'])) {
+            if (!empty($product_data['属性'])) {
+                foreach ($product_data['属性'] as &$v) {
+                    $v['尺寸'] = $v['尺码'];
+                    $v['尺寸id'] = $v['尺码id'];
+                }
+            }
+        }
+    }
+
+    private function matchProduct($product, $product_data, $categoryModel) {
+        $titleArr = explode(' ', $product_data['产品标题']);
+        if (count($titleArr) > 0) {
+            $titleCount = [];
+            foreach ($titleArr as $k1 => $v) {
+                $k = strtolower($v);
+                if (isset($titleCount[$k])) {
+                    $titleCount[$k] ++;
+                } else {
+                    $titleCount[$k] = 1;
+                }
+                if ($titleCount[$k] > 3) {
+                    unset($titleArr[$k1]);
+                }
+            }
+            $product_data['产品标题'] = implode(' ', $titleArr);
+        }
         $tran_product_data = $this->mergeArr($product_data, $categoryModel->info_json);
         $tran_product_data['分类id'] = $categoryModel->dh_category_id;
         $tran_product_data['分类名称'] = $categoryModel->dest_category;
-        $needJson = json_decode(file_get_contents(MY_DOMAIN . '/product/getCateAttrL?catePubId=' . $categoryModel->dh_category_id), true);
+        $jsonStr = file_get_contents(MY_DOMAIN . '/product/getCateAttrL?catePubId=' . $categoryModel->dh_category_id);
+        $needJson = json_decode($jsonStr, true);
         if (!empty($needJson['data']['attributeList'])) {
             $needJson = CommonFun::arrayColumns($needJson['data']['attributeList'], null, 'lineAttrNameCn');
         }
@@ -298,13 +530,13 @@ class LexiconController extends ControllerBase {
         $n = 0;
         $status = 1;
         $need_attribute = '';
-        $ret = $this->colorSize($tran_product_data['属性']);
+        $ret = $this->colorSize($tran_product_data['属性'], $needJson);
         if ($ret == false) {
-            $need_attribute.='颜色尺码|';
+            $need_attribute.=' 产品规格|';
             $status = 0;
         }
         foreach ($needJson as $v) {
-            if (in_array($v['lineAttrNameCn'], ['颜色', '尺码'])) {
+            if ($v['buyAttr'] == '1') {//in_array($v['lineAttrNameCn'], ['颜色', '尺码', '尺寸'])
                 continue;
             }
             $needArr[$n] = [
@@ -315,21 +547,41 @@ class LexiconController extends ControllerBase {
             if (isset($tran_product_data[$v['lineAttrNameCn']])) {
                 $needArr[$n]['is_exist'] = '1';
             }
-            if ($needArr[$n]['required'] == '1' && $needArr[$n]['is_exist'] != '1') {
-                foreach ($v['valueList'] as $v1) {
-                    if (in_array($v1['lineAttrvalNameCn'], $tran_product_data)) {
-                        $tran_product_data[$v['lineAttrNameCn']] = $v1['lineAttrvalNameCn'];
-                        $needArr[$n]['is_exist'] = '1';
-                        break;
+            if ($needArr[$n]['is_exist'] != '1') {
+                if (!empty($v['valueList'])) {
+                    foreach ($v['valueList'] as $v1) {
+                        if (in_array($v1['lineAttrvalNameCn'], $tran_product_data) || in_array(strtolower($v1['lineAttrvalName']), $tran_product_data)) {
+                            if (isset($tran_product_data[$v['lineAttrNameCn']])) {
+                                if (is_array($tran_product_data[$v['lineAttrNameCn']])) {
+                                    $tran_product_data[$v['lineAttrNameCn']][] = $v1['lineAttrvalNameCn'];
+                                } else {
+                                    $tran_product_data[$v['lineAttrNameCn']] = [$tran_product_data[$v['lineAttrNameCn']], $v1['lineAttrvalNameCn']];
+                                }
+                            } else {
+                                $tran_product_data[$v['lineAttrNameCn']] = $v1['lineAttrvalNameCn'];
+                            }
+                            $needArr[$n]['is_exist'] = '1';
+                            if ($v['type'] != '1') {
+                                break;
+                            }
+                        }
                     }
                 }
             }
-            if ($needArr[$n]['required'] == '1' && $needArr[$n]['is_exist'] != '1') {
-                $tran_product_data[$v['lineAttrNameCn']] = '自定义|other';
+            if (($needArr[$n]['required'] == '1' || $v['isother'] == '1') && $needArr[$n]['is_exist'] != '1') {
+                if ($v['isother'] == '0') {
+                    $tran_product_data[$v['lineAttrNameCn']] = $v['valueList'][0]['lineAttrvalName'];
+                } else {
+                    $tran_product_data[$v['lineAttrNameCn']] = '自定义|other';
+                }
             }
             $n++;
         }
         $tran_product_data['需要匹配'] = $needArr;
+        if (count($product_data['产品图片']) < 3) {
+            $status = '0';
+            $need_attribute.='产品图片太少';
+        }
         if ($status == '1') {
             $tran_product_data['匹配情况'] = '匹配成功';
         }
@@ -346,19 +598,19 @@ class LexiconController extends ControllerBase {
         $key = trim($key);
         $key = trim($key, '-');
         $key = preg_replace('/\d+$/', '', $key);
-        if (in_array($key, ['brand name', 'model number', 'size', 'color', 'cn size', 'european size', 'eur size', 'euro size', 'size euro', 'colors', 'shoes size'])) {
+        if (in_array($key, ['brand name', 'model number', 'size', 'cn size', 'european size', 'eur size', 'euro size', 'size euro', 'shoes size'])) {
             return;
         }
         if (is_string($value)) {
             $str = $key . ':' . $value;
             $wordModel = \Words::findFirst([
-                        'conditions' => 'orign_words=:orign_words:',
+                        'conditions' => 'orign_words = :orign_words:',
                         'bind' => [
                             'orign_words' => $str
                         ]
             ]);
             if ($wordModel == false) {
-                if (preg_match('/^[\d|,|，|\.]+$/', $value)) {
+                if (preg_match('/^[\d|, |，|\.]+$/', $value)) {
                     return;
                 }
                 if ($key == 'gender') {
@@ -435,36 +687,40 @@ class LexiconController extends ControllerBase {
                     }
                 }
             }
-            foreach ($wordModels as $wordModel) {
-                if ($wordModel instanceof \Words) {
-                    $nCount = \NeedWords::count([
-                                'conditions' => 'words=:words:',
-                                'bind' => [
-                                    'words' => $wordModel->orign_words
-                                ],
-                                'column' => 'DISTINCT source_product_id'
-                    ]);
-                    if ($nCount > 10) {
-                        $important = 0;
-                    } else if ($important == 2 && $nCount > 3) {
-                        $important = 1;
-                    }
-                    if ($wordModel->status == 200) {
-                        $dest_words .=',' . $wordModel->dest_words;
-                    }
-                }
-            }
-            if (empty($wordModel)) {
+            if (empty($wordModels) && empty($dest_words)) {
                 $wordModel = new \Words();
                 $wordModel->orign_words = $str;
-                $wordModel->dest_words = $dest_words;
+                $wordModel->dest_words = '';
                 $wordModel->is_cate = 0;
                 $wordModel->important = $important;
-                $wordModel->status = empty($dest_words) ? 0 : 200;
+                $wordModel->status = 0;
                 $wordModel->source_product_id = $source_product_id;
                 $wordModel->createtime = date('Y-m-d H:i:s');
                 $wordModel->catepubid = $catepubid;
                 $wordModel->save();
+            }
+            if (!empty($wordModels)) {
+                foreach ($wordModels as $wordModel) {
+                    if ($wordModel instanceof \Words) {
+                        $nCount = \NeedWords::count([
+                                    'conditions' => 'words=:words:',
+                                    'bind' => [
+                                        'words' => $wordModel->orign_words
+                                    ],
+                                    'column' => 'DISTINCT source_product_id'
+                        ]);
+                        if ($nCount > 10) {
+                            $important = 0;
+                        } else if ($important == 2 && $nCount > 3) {
+                            $important = 1;
+                        }
+                        if ($wordModel->status == 200) {
+                            $dest_words .=',' . $wordModel->dest_words;
+                        }
+                        $wordModel->important = $important;
+                        $wordModel->save();
+                    }
+                }
             }
             $needWords = \NeedWords::findFirst([
                         'conditions' => 'words=:words: and is_cate=0 and source_product_id=:source_product_id:',
@@ -520,9 +776,9 @@ class LexiconController extends ControllerBase {
         }
     }
 
-    public function colorSize($colorSizeArr) {
+    private function height($colorSizeArr) {
         foreach ($colorSizeArr as $key => $li) {
-            if (empty($li['颜色']) || empty($li['尺码'])) {
+            if (empty($li['尺寸'])) {
                 unset($colorSizeArr[$key]);
             }
         }
@@ -531,6 +787,69 @@ class LexiconController extends ControllerBase {
         } else {
             return true;
         }
+    }
+
+    private function material($colorSizeArr) {
+        foreach ($colorSizeArr as $key => $li) {
+            if (empty($li['材质'])) {
+                unset($colorSizeArr[$key]);
+            }
+        }
+        if (empty($colorSizeArr)) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    private function type($colorSizeArr) {
+        foreach ($colorSizeArr as $key => $li) {
+            if (empty($li['类型'])) {
+                unset($colorSizeArr[$key]);
+            }
+        }
+        if (empty($colorSizeArr)) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function colorSize($colorSizeArr, $needJson) {
+        if (isset($needJson['颜色']) && $needJson['颜色']['buyAttr'] == '1') {
+            $ret = $this->color($colorSizeArr);
+            if ($ret == false) {
+                return false;
+            }
+        }
+        if (isset($needJson['尺码']) && $needJson['尺码']['buyAttr'] == '1') {
+            $ret = $this->size($colorSizeArr);
+            if ($ret == false) {
+                return false;
+            }
+        }
+        if (isset($needJson['尺寸']) && $needJson['尺寸']['buyAttr'] == '1') {
+            $ret = $this->height($colorSizeArr);
+            if ($ret == false) {
+                return false;
+            }
+        }
+
+        if (isset($needJson['材质']) && $needJson['材质']['buyAttr'] == '1') {
+            $ret = $this->material($colorSizeArr);
+            if ($ret == false) {
+                echo 3;
+                return false;
+            }
+        }
+
+        if (isset($needJson['类型']) && $needJson['类型']['buyAttr'] == '1') {
+            $ret = $this->type($colorSizeArr);
+            if ($ret == false) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public function mergeArr($arr, $jsonStr) {
@@ -668,7 +987,6 @@ class LexiconController extends ControllerBase {
         $curl->maxThread = 2;
         $num = 0;
         $max = 300;
-//        var_dump($wordsList->toArray());
         $wordsArr = array_column($json['data']['attributeList'], 'lineAttrNameCn');
         $wordsArr1 = array_column($json['data']['attributeList'], 'lineAttrName');
         foreach ($wordsList as $item) {
@@ -889,28 +1207,30 @@ class LexiconController extends ControllerBase {
 
     public function t6Action() {
         $list = \Product::find([
-                    'conditions' => 'status=0 and need_attribute like "%颜色尺码%"'
+                    'conditions' => 'dh_category_id like "006003115%"'
         ]);
         foreach ($list as $item) {
-            $queueUrl = MY_DOMAIN . '/collection/hand?source_url=' . urlencode($item->source_url);
-            $queue = new \Queue();
-            $queue->queue_url = $queueUrl;
-            $queue->status = 0;
-            $queue->createtime = date('Y-m-d H:i:s');
-            $queue->contents = '采集';
-            $queue->save();
-//            $queueUrl = MY_DOMAIN . '/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
+//            $queueUrl = MY_DOMAIN . '/collection/hand?source_url=' . urlencode($item->source_url);
 //            $queue = new \Queue();
 //            $queue->queue_url = $queueUrl;
 //            $queue->status = 0;
 //            $queue->createtime = date('Y-m-d H:i:s');
-//            $queue->contents = '分类匹配成功,产品属性匹配';
+//            $queue->contents = '采集';
 //            $queue->save();
+            $queueUrl = MY_DOMAIN . '/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
+            $queue = new \Queue();
+            $queue->queue_url = $queueUrl;
+            $queue->status = 0;
+            $queue->createtime = date('Y-m-d H:i:s');
+            $queue->contents = '分类匹配成功,产品属性匹配';
+            $queue->save();
         }
     }
 
     public function t7Action() {
-        $list = \Product::find();
+        $list = \Product::find([
+                    'conditions' => 'dh_category_id like "006%"'
+        ]);
         foreach ($list as $item) {
             $queueUrl = MY_DOMAIN . '/collection/hand?source_url=' . urlencode($item->source_url);
             $queue = new \Queue();
@@ -987,27 +1307,82 @@ class LexiconController extends ControllerBase {
         exit();
     }
 
+    public function keyListAction() {
+        $page = $this->request->get('page', 'int', 1);
+        $size = 100;
+        $all_num = $this->db->query('select count(*) as all_num from (select b.key from keyvalue b group by b.key,b.keycn) a')->fetch()['all_num'];
+        $list = \Keyvalue::find([
+                    'group' => 'key,keycn',
+                    'order' => 'ctime desc',
+                    'limit' => [
+                        'number' => $size,
+                        'offset' => ($page - 1) * $size
+                    ],
+                    'columns' => 'key,keycn,max(createtime) as ctime'
+                ])->toArray();
+        $pages = (object) [
+                    'total_pages' => ceil($all_num / $size),
+                    'last' => ceil($all_num / $size),
+                    'current' => $page,
+                    'all_num' => $all_num,
+                    'items' => $list,
+                    'before' => $page - 1,
+                    'next' => $page + 1
+        ];
+        $this->view->pages = $pages;
+        $this->view->page = $page;
+    }
+
     public function addKeyAction() {
         $key = $this->request->get('key', 'string', '');
-        $key1 = $this->request->get('key1', 'string', '');
-        $keyvalues = \Keyvalue::find([
-                    'conditions' => 'key=:key:',
+        $keycn = $this->request->get('keycn', 'string', '');
+        $hasKey = \Keyvalue::count([
+                    'conditions' => 'key=:key: and keycn=:keycn:',
                     'bind' => [
-                        'key' => strtolower($key)
+                        'key' => $key,
+                        'keycn' => $keycn
                     ]
+        ]);
+        if ($hasKey > 0) {
+            $this->echoJson(['status' => 'error', 'msg' => '已添加']);
+        }
+        $keyvalues = \Keyvalue::find([
+                    'conditions' => 'keycn=:keycn:',
+                    'bind' => [
+                        'keycn' => $keycn
+                    ],
+                    'group' => 'value,valuecn',
+                    'columns' => 'keycn,value,valuecn'
                 ])->toArray();
         if (!empty($keyvalues)) {
             foreach ($keyvalues as $v) {
-                unset($v['id']);
                 $v['createtime'] = date('Y-m-d H:i:s');
-                $v['key'] = strtolower($key1);
+                $v['key'] = strtolower($key);
                 $model = new \Keyvalue();
                 $model->save($v);
             }
         }
-        file_get_contents(MY_DOMAIN . '/lexicon/matchKeyvalue?key=' . strtolower($key1));
-        echo 'success';
-        exit();
+        file_get_contents(MY_DOMAIN . '/lexicon/matchKeyvalue?key=' . strtolower($key));
+        $this->echoJson(['status' => 'success', 'msg' => '添加成功']);
+    }
+
+    public function delKeyAction() {
+        $key = $this->request->get('key', 'string', '');
+        $keycn = $this->request->get('keycn', 'string', '');
+        $hasKeys = \Keyvalue::find([
+                    'conditions' => 'key=:key: and keycn=:keycn:',
+                    'bind' => [
+                        'key' => $key,
+                        'keycn' => $keycn
+                    ]
+        ]);
+        if (empty($hasKeys)) {
+            $this->echoJson(['status' => 'error', 'msg' => '未找到该Key']);
+        }
+        foreach ($hasKeys as $hasKey) {
+            $hasKey->del();
+        }
+        $this->echoJson(['status' => 'success', 'msg' => '删除成功']);
     }
 
 }

@@ -89,6 +89,7 @@ class CommonFun {
             $data = [
                 '产品id' => $html->find('input[name=objectId]', 0)->value,
                 '产品标题' => htmlspecialchars_decode($html->find('.product-name', 0)->plaintext),
+                '价格' => $html->find('#j-sku-price', 0)->plaintext,
                 '原价' => self::getJsValue($contents, 'window.runParams.minPrice') . ' - ' . self::getJsValue($contents, 'window.runParams.maxPrice'), //$html->find('.product-price-main .p-del-price-detail .p-price', 0)->plaintext,
                 '特价' => self::getJsValue($contents, 'window.runParams.actMinPrice') . ' - ' . self::getJsValue($contents, 'window.runParams.actMaxPrice'), //$html->find('.product-price-main .p-current-price .p-price', 0)->plaintext,
                 '价格单位' => self::getJsValue($contents, 'window.runParams.baseCurrencyCode'), //$html->find('.p-symbol', 0)->outertext,//->getAttribute('itemprop'),
@@ -104,19 +105,23 @@ class CommonFun {
                         $data['categories'][] = strtolower(urldecode($a->title));
                     }
                 }
+            } else {
+                if (!empty($html->find('.breadcrumb-layout b'))) {
+                    foreach ($html->find('.breadcrumb-layout b') as $b) {
+                        if (!empty($b->plaintext)) {
+                            $data['categories'][] = strtolower(urldecode($b->plaintext));
+                        }
+                    }
+                }
             }
-//            else if (!empty($html->find('.m-sop-crumb b'))) {
-//                foreach ($html->find('.m-sop-crumb b') as $b) {
-//                    if (!empty($b->plaintext)) {
-//                        $data['categories'][] = strtolower(urldecode($b->plaintext));
-//                    }
-//                }
-//            }
             $attribute = [];
             $sizes = [];
+            $height = [];
+            $material = [];
+            $length = [];
             $colorList = [];
             $skuAttr = [];
-            $postion = ['size' => 99, 'from' => 99, 'color' => 99];
+            $postion = ['size' => 99, 'from' => 99, 'color' => 99, 'height' => 99, 'material' => 99, 'length' => 99];
             $pos = 0;
             foreach ($html->find('#j-product-info-sku .p-property-item') as $item) {
                 $type = strtolower($item->find('.p-item-title', 0)->plaintext);
@@ -125,17 +130,17 @@ class CommonFun {
                     foreach ($item->find('a') as $a) {
                         $id = $a->getAttribute('data-sku-id');
                         $colorList[$id] = [
-                            '颜色' => strtolower(str_replace(' ', '', $a->title)),
+                            '颜色' => strtolower(str_replace(' ', '', empty($a->title) ? $a->find('span', 0)->plaintext : $a->title)),
                             '图片' => empty($a->find('img')) ? '' : $a->find('img', 0)->bigpic,
                             '颜色id' => $id,
-                            '颜色orign' => $a->title,
+                            '颜色orign' => empty($a->title) ? $a->find('span', 0)->plaintext : $a->title,
                         ];
                         $ids[] = $id;
                     }
                     $skuAttr[] = $ids;
                     $postion['color'] = $pos;
                     $pos++;
-                } elseif (strpos($type, 'size') !== false) {
+                } elseif (strpos($type, 'size') !== false||strpos($type, 'quantity') !== false) {
                     foreach ($item->find('a') as $a) {
                         $id = $a->getAttribute('data-sku-id');
                         $sizes[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;
@@ -144,26 +149,40 @@ class CommonFun {
                     $skuAttr[] = $ids;
                     $postion['size'] = $pos;
                     $pos++;
+                } elseif (strpos($type, 'height') !== false||strpos($type, 'capacity') !== false) {
+                    foreach ($item->find('a') as $a) {
+                        $id = $a->getAttribute('data-sku-id');
+                        $height[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;
+                        $ids[] = $id;
+                    }
+                    $skuAttr[] = $ids;
+                    $postion['height'] = $pos;
+                    $pos++;
+                } elseif (strpos($type, 'material') !== false) {
+                    foreach ($item->find('a') as $a) {
+                        $id = $a->getAttribute('data-sku-id');
+                        $material[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;
+                        $ids[] = $id;
+                    }
+                    $skuAttr[] = $ids;
+                    $postion['material'] = $pos;
+                    $pos++;
                 } elseif (strpos($type, 'ships from') !== false) {
                     $ids[] = 201336100;
                     $skuAttr[] = $ids;
                     $postion['from'] = $pos;
                     $pos++;
+                } elseif (strpos($type, 'length') !== false || strpos($type, 'type') !== false) {
+                    foreach ($item->find('a') as $a) {
+                        $id = $a->getAttribute('data-sku-id');
+                        $length[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;
+                        $ids[] = $id;
+                    }
+                    $skuAttr[] = $ids;
+                    $postion['length'] = $pos;
+                    $pos++;
                 }
             }
-//            foreach ($html->find('#j-product-info-sku #j-sku-list-1 a') as $a) {
-//                $id = $a->getAttribute('data-sku-id');
-//                $colorList[$id] = [
-//                    '颜色' => strtolower(str_replace(' ', '', $a->title)),
-//                    '图片' => empty($a->find('img')) ? '' : $a->find('img', 0)->bigpic,
-//                    '颜色id' => $id,
-//                ];
-//            }
-//            foreach ($html->find('#j-product-info-sku #j-sku-list-2 a') as $a) {
-//                $id = $a->getAttribute('data-sku-id');
-//                $sizes[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;
-//            }
-//            $skuAttr = self::getJsJson($contents, 'skuAttrIds');
             $skuProducts = self::getJsJson($contents, 'skuProducts');
             if (!empty($skuAttr)) {
                 $skuAttr = self::crossArr([], $skuAttr);
@@ -173,36 +192,24 @@ class CommonFun {
             }
             $num = 0;
             foreach ($skuAttr as $v) {
+                if (!isset($skuProducts[$v])) {
+                    continue;
+                }
                 $info = $skuProducts[$v];
                 $arr = explode(',', $v);
-                $attribute[$num] = isset($colorList[$arr[$postion['color']]]) ? $colorList[$arr[$postion['color']]] : '';
+                $attribute[$num] = isset($arr[$postion['color']]) && isset($colorList[$arr[$postion['color']]]) ? $colorList[$arr[$postion['color']]] : '';
                 $attribute[$num]['尺码id'] = isset($arr[$postion['size']]) ? $arr[$postion['size']] : '';
                 $attribute[$num]['尺码'] = isset($arr[$postion['size']]) && isset($sizes[$arr[$postion['size']]]) ? trim($sizes[$arr[$postion['size']]], ' ') : '';
+                $attribute[$num]['尺寸id'] = isset($arr[$postion['height']]) ? $arr[$postion['height']] : '';
+                $attribute[$num]['尺寸'] = isset($arr[$postion['height']]) && isset($height[$arr[$postion['height']]]) ? trim($height[$arr[$postion['height']]], ' ') : '';
                 $attribute[$num]['可用量'] = $info['skuVal']['availQuantity'];
                 $attribute[$num]['库存'] = $info['skuVal']['inventory'];
                 $attribute[$num]['折扣价'] = isset($info['skuVal']['actSkuCalPrice']) ? $info['skuVal']['actSkuCalPrice'] : $info['skuVal']['skuCalPrice'];
                 $attribute[$num]['原价'] = $info['skuVal']['skuCalPrice'];
+                $attribute[$num]['材质'] = isset($arr[$postion['material']]) && isset($material[$arr[$postion['material']]]) ? trim($material[$arr[$postion['material']]], ' ') : '';
+                $attribute[$num]['长度'] = isset($arr[$postion['length']]) && isset($length[$arr[$postion['length']]]) ? trim($length[$arr[$postion['length']]], ' ') : '';
                 $num++;
             }
-
-//            foreach ($skuAttr[0] as $v0) {
-//                foreach ($skuAttr[1] as $v1) {
-//                    if (isset($skuProducts[$v0 . ',' . $v1])) {
-//                        $info = $skuProducts[$v0 . ',' . $v1];
-//                    } else {
-//                        $info = $skuProducts[$v0 . ',' . $v1 . ',201336100'];
-//                    }
-//
-//                    $attribute[$num] = $colorList[$v0];
-//                    $attribute[$num]['尺码id'] = $v1;
-//                    $attribute[$num]['尺码'] = trim($sizes[$v1], ' ');
-//                    $attribute[$num]['可用量'] = $info['skuVal']['availQuantity'];
-//                    $attribute[$num]['库存'] = $info['skuVal']['inventory'];
-//                    $attribute[$num]['折扣价'] = isset($info['skuVal']['actSkuCalPrice']) ? $info['skuVal']['actSkuCalPrice'] : $info['skuVal']['skuCalPrice'];
-//                    $attribute[$num]['原价'] = $info['skuVal']['skuCalPrice'];
-//                    $num++;
-//                }
-//            }
             $needMatchList = [];
             foreach ($html->find('.product-property-list li') as $li) {
                 $key = strtolower(trim(trim($li->find('.propery-title', 0)->plaintext), ':'));
@@ -232,7 +239,7 @@ class CommonFun {
             $data['产品图片'] = [];
             foreach ($html->find('.image-thumb-list img') as $img) {
                 $str = $img->src;
-                $data['产品图片'][] = substr($str, 0, strrpos($str, '_50x50.jpg'));
+                $data['产品图片'][] = substr($str, 0, strrpos($str, '_50x50'));
             }
             $html->clear();
             $data['匹配情况'] = '未匹配';

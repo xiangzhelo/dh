@@ -27,14 +27,32 @@ class Product extends Model {
 
     public static function getPage($page = 1, $size = 100, $status = '', $cateIds = [], $username = '') {
         $q = [
-            'columns' => 'id,source_url,source_product_id,source_product_name,source_img,dh_product_id,status,need_attribute,createtime,dh_itemcode,current_user'
+            'columns' => 'id,source_url,source_product_id,source_product_name,source_img,dh_product_id,dh_category_id,status,need_attribute,createtime,dh_itemcode,current_user'
         ];
         if ($status !== '') {
             if ($status == '2') {
                 if (isset($q['conditions'])) {
-                    $q['conditions'].=' and dh_product_id>0';
+                    $q['conditions'].=' and dh_product_id>0 and dh_itemcode=0';
                 } else {
-                    $q['conditions'] = 'dh_product_id>0';
+                    $q['conditions'] = 'dh_product_id>0 and dh_itemcode=0';
+                }
+            } else if ($status == '200') {
+                if (isset($q['conditions'])) {
+                    $q['conditions'].=' and dh_itemcode>0';
+                } else {
+                    $q['conditions'] = 'dh_itemcode>0';
+                }
+            } else if ($status == '400,402') {
+                if (isset($q['conditions'])) {
+                    $q['conditions'].=' and status in (400,402)';
+                } else {
+                    $q['conditions'] = 'status in (400,402)';
+                }
+            } elseif ($status == '1') {
+                if (isset($q['conditions'])) {
+                    $q['conditions'].=' and status=1 and dh_itemcode=0 and dh_product_id=0';
+                } else {
+                    $q['conditions'] = 'status=1 and dh_itemcode=0 and dh_product_id=0';
                 }
             } else {
                 if (isset($q['conditions'])) {

@@ -20,7 +20,9 @@ class SettingController extends ControllerBase {
                 'switch' => '0',
                 'time' => '3',
                 'queueNum' => '3',
-                'run' => '0'
+                'run' => '0',
+                'priceFormula' => 'x*2.2',
+                'users' => ["lakeone" => "lk123456", "oldriver" => "lk171001", "starone" => "lk171001", "missyou2016" => "lk171001", "kebe1" => "lk171001", "ksld" => "lk171001", "walon123" => "lk171001"]
             ];
         }
         $this->view->json = $json;
@@ -30,7 +32,10 @@ class SettingController extends ControllerBase {
         $sw = $this->request->get('sw', 'int', '0');
         $t = $this->request->get('t', 'int', '3');
         $queueNum = $this->request->get('queueNum', 'int', '3');
-        if (($sw == 1 || $sw == 0) && $t > 0 && $t < 60 && $queueNum > 0 && $queueNum < 11) {
+        $priceFormula = $this->request->get('priceFormula', 'string', 'x*2.2');
+        eval(str_replace('x', 1, '$price=' . $priceFormula . ';'));
+        $users = htmlspecialchars_decode($this->request->get('users', 'string', '{"lakeone": "lk123456","oldriver": "lk171001","starone": "lk171001","missyou2016": "lk171001","kebe1": "lk171001","ksld": "lk171001","walon123": "lk171001"}'));
+        if (($sw == 1 || $sw == 0) && $t > 0 && $t < 60 && $queueNum > 0 && $queueNum < 11 && $price > 1) {
             $file = APP_PATH . 'config/setting.json';
             if (file_exists($file)) {
                 $json = json_decode(file_get_contents($file), true);
@@ -45,7 +50,8 @@ class SettingController extends ControllerBase {
                     $json['run'] = 0;
                 }
             }
-            $data = ['switch' => $sw, 'time' => $t, 'queueNum' => $queueNum, 'run' => $json['run']];
+            $users = json_decode($users, true);
+            $data = ['switch' => $sw, 'time' => $t, 'queueNum' => $queueNum, 'run' => $json['run'], 'priceFormula' => empty($priceFormula) ? $json['priceFormula'] : $priceFormula, 'users' => empty($users) ? $json['users'] : $users];
             file_put_contents($file, json_encode($data, JSON_UNESCAPED_UNICODE));
             $this->echoJson(['status' => 'success', 'msg' => '配置成功', 'run' => $json['run']]);
         } else {
@@ -225,4 +231,25 @@ class SettingController extends ControllerBase {
         }
         $this->echoJson(['status' => 'success', 'msg' => '设置成功']);
     }
+
+    public function getQueueCountAction() {
+        $count = \Queue::count([
+                    'conditions' => 'status in (0,1,400,401)'
+        ]);
+        $this->echoJson(['status' => 'success', 'msg' => '队列数', 'data' => $count]);
+    }
+
+    public function t1Action() {
+        $curl = new \Lib\Vendor\MyCurl();
+//        $url = 'https://game.weixin.qq.com/cgi-bin/gamewap/getusermobagameindex?offset=0&limit=10&openid=owanlsq4H4TQTI7xibhcRTt-u1BY&uin=&key=&pass_ticket=L%2FulwR7h5hVsZ3EoVT8nhldtkFy0AIvPrKi%2FVluzPWSHcneSULlfQk8GFyexoNVn&QB&';  //用户信息
+        $url = 'https://game.weixin.qq.com/cgi-bin/gamewap/getusermobabattleinfolist?offset=0&limit=10&openid=owanlsq4H4TQTI7xibhcRTt-u1BY&zone_area_id=3080&uin=&key=&pass_ticket=L%2FulwR7h5hVsZ3EoVT8nhldtkFy0AIvPrKi%2FVluzPWSHcneSULlfQk8GFyexoNVn&QB&';  //用户比赛
+        $cookies = 'key=9eeb6fa775f105e0770a0cb43fba759813d9bb72db7315c0d7accdf437a5b1704ac59748612c7650a086557b8c62a9f6c69bd86618db5ece790478e5e8e33dc78efbf48e69dc344acc4797a757a7fb0d; pass_ticket=L%2FulwR7h5hVsZ3EoVT8nhldtkFy0AIvPrKi%2FVluzPWSHcneSULlfQk8GFyexoNVn; uin=MTI5MDMzNTA2MA%3D%3D; pgv_info=pgvReferrer=https://qt.qq.com/v/hero/h5_player.html&ssid=s6564142384; pgv_pvid=5610868640; pgv_si=s6414125056; pgv_pvi=9364937728; sd_cookie_crttime=1529056056834; sd_userid=13581529056056834';
+        $json = $curl->get($url, $cookies);
+        $this->echoJson(json_decode($json, true));
+    }
+
+    public function t2Action() {
+        $this->echoJson($_POST);
+    }
+
 }

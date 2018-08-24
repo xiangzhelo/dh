@@ -27,6 +27,10 @@ class CollectionController extends ControllerBase {
         if (strpos($source_url, 'http') === false) {
             $source_url = 'http:' . $source_url;
         }
+        if (strpos($source_url, '/store/product/') !== false) {
+            $source_url = str_replace('/store/product/', '/item/', $source_url);
+            $source_url = preg_replace('/[0-9]+_/', '', $source_url);
+        }
         if ($collection_new == '1') {
             $hasProduct = \Product::findFirst([
                         'conditions' => 'source_url = :source_url:',
@@ -46,6 +50,11 @@ class CollectionController extends ControllerBase {
             }
             if (!empty($data['categories'])) {
                 $len = count($data['categories']);
+                if (in_array('camping &amp; hiking', $data['categories']) && (in_array('climbing accessories', $data['categories']))) {
+                    if (isset($data['type'])) {
+                        $data['categories'][] = $data['type'];
+                    }
+                }
                 $category = trim(strtolower(implode(' > ', $data['categories'])));
                 $cateModel = \Categories::findFirst([
                             'conditions' => 'orign_category=:orign_category:',
@@ -183,8 +192,8 @@ class CollectionController extends ControllerBase {
         $dom = new \Lib\Vendor\HtmlDom();
         $html = $dom->load($output);
         $num = 0;
-        if (!empty($html->find('#list-items li .img a,.list-items li .img a'))) {
-            foreach ($html->find('#list-items li .img a,.list-items li .img a') as $a) {
+        if (!empty($html->find('#list-items li .img a,.list-items li .img a,.items-list li .img a'))) {
+            foreach ($html->find('#list-items li .img a,.list-items li .img a,.items-list li .img a') as $a) {
                 $href = $a->href;
                 $queueUrl = MY_DOMAIN . '/collection/hand?source_url=' . urlencode($href) . '&collection_new=1';
                 $queue = new \Queue();
@@ -195,7 +204,7 @@ class CollectionController extends ControllerBase {
                 $queue->save();
                 $num++;
             }
-            $nUrl = 'https:' . str_replace('&amp;', '&', $html->find('.page-next', 0)->href);
+            $nUrl = 'https:' . str_replace('&amp;', '&', $html->find('.page-next,.ui-pagination-next', 0)->href);
         }
         $html->clear();
         $msg.= '第' . $p . '页获取' . $num . '商品； ';

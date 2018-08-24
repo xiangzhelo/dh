@@ -11,10 +11,27 @@ class ControllerBase extends Controller {
     public $password = 'lk123456';
     public $users = [
         'lakeone' => 'lk123456',
-        'ceshi' => '123'
+        'oldriver' => 'lk171001',
+        'starone' => 'lk171001',
+        'missyou2016' => 'lk171001',
+        'kebe1' => 'lk171001',
+        'ksld' => 'lk171001',
+        'walon123' => 'lk171001'
     ];
+    public $priceFormula = 'x*2.2';
+    public $header = '';
 
     public function initialize() {
+        $this->header = ['X-FORWARDED-FOR:' . CommonFun::Rand_IP(), 'CLIENT-IP:' . CommonFun::Rand_IP()];
+        if ($_GET['_url'] != '/setting/setUpdate') {
+            $file = APP_PATH . 'config/setting.json';
+            if (!file_exists($file)) {
+                file_get_contents(MY_DOMAIN . '/setting/setUpdate');
+            }
+            $json = json_decode(file_get_contents($file), true);
+            $this->users = $json['users'];
+            $this->priceFormula = $json['priceFormula'];
+        }
         if (isset($_COOKIE['current_user']) && isset($this->users[$_COOKIE['current_user']])) {
             $this->username = $_COOKIE['current_user'];
             $this->password = $this->users[$_COOKIE['current_user']];
@@ -42,7 +59,7 @@ class ControllerBase extends Controller {
                     ]
         ]);
         if ($cookiesModel instanceof \Cookies) {
-            if ($cookiesModel->cookies_time > (time() - 3600)) {
+            if ($cookiesModel->cookies_time > (time() - 3600) && !empty($cookiesModel->cookies)) {
                 return true;
             }
         }
@@ -70,6 +87,9 @@ class ControllerBase extends Controller {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0); //对认证证书来源的检查
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); //从证书中检查SSL加密算法是否存在
+        if (!empty($this->header)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->header);
+        }
         $content = curl_exec($ch);
         curl_close($ch);
         list($header, $body) = explode("\r\n\r\n", $content);
@@ -82,6 +102,9 @@ class ControllerBase extends Controller {
         $ch1 = curl_init();
         curl_setopt($ch1, CURLOPT_URL, 'https://secure.dhgate.com/passport/sigin');
         curl_setopt($ch1, CURLOPT_HEADER, 1);
+        if (!empty($this->header)) {
+            curl_setopt($ch1, CURLOPT_HTTPHEADER, $this->header);
+        }
         curl_setopt($ch1, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch1, CURLOPT_COOKIE, $cookie);
         curl_setopt($ch1, CURLOPT_POST, 1);
@@ -121,6 +144,9 @@ class ControllerBase extends Controller {
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HEADER, 1);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        if (!empty($this->header)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->header);
+        }
         if (!empty($cookie)) {
             curl_setopt($ch, CURLOPT_COOKIE, $cookie);
         }

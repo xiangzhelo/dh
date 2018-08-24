@@ -49,14 +49,31 @@
                 <input type="text" placeholder="3" id="queueNum" value="<?= $json['queueNum'] ?>">
             </div>
         </div>
-        <div class="eight wide column"></div>
+        <div class="eight wide column">
+            <span>价格公式 : </span>
+            <div class="ui input focus">
+                <input type="text" placeholder="x*2.2+1" id="priceFormula" value="<?= $json['priceFormula'] ?>">
+            </div>
+        </div>
+        <div class="sixteen wide column">
+            <div class="ui form">
+                <div class="field">
+                    <span>账号 ： </span>
+                    <textarea id="users" rows="4" style="width:90%;display: inline-block;"><?= json_encode($json['users'], JSON_UNESCAPED_UNICODE) ?></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="sixteen wide column">
+            <button class="ui primary button" onclick="setUpdate();">保 存</button>
+        </div>
     </div>
-
+    <div style="color:red;margin: 5px;">还有<span id="queueTotalNum" style="margin: 3px;"></span>条队列</div>
     <script>
         $(function () {
-            $('#time,#queueNum').change(function () {
-                setUpdate();
-            });
+//            $('#time,#queueNum,#priceFormula,#users').change(function () {
+//                setUpdate();
+//            });
+            setCount();
         });
         var t0 = new Date().getTime();
         function btn_switch(d) {
@@ -74,20 +91,36 @@
             var sw = $('#switch').val();
             var t = $('#time').val();
             var queueNum = $('#queueNum').val();
+            var priceFormula = $('#priceFormula').val();
+            console.log(priceFormula);
+            var users = $('#users').val();
             $.ajax({
                 url: '/setting/setUpdate',
                 type: 'GET',
                 async: false,
-                data: {sw: sw, t: t, queueNum: queueNum},
+                dataType: 'json',
+                data: {sw: sw, t: t, queueNum: queueNum, priceFormula: priceFormula, users: users},
                 success: function (json) {
                     console.log(json);
-                    if (json['status'] == 'error') {
-                        alert(json['msg']);
-                    } else {
+                    alert(json['msg']);
+                    if (json['status'] == 'success') {
                         if (sw == 1 && json['run'] == 0) {
                             $.get('/setting/queue');
                         }
                     }
+                }
+            });
+        }
+        function setCount() {
+            $.ajax({
+                url: '/setting/getQueueCount',
+                type: 'GET',
+                dataType: 'json',
+                success: function (json) {
+                    if (json['status'] == 'success') {
+                        $('#queueTotalNum').text(json['data']);
+                    }
+                    setTimeout('setCount()', 3000);
                 }
             });
         }

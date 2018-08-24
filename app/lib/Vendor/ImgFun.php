@@ -2,9 +2,11 @@
 
 namespace Lib\Vendor;
 
+use Lib\Vendor\CommonFun;
+
 class ImgFun {
 
-    public static function downLoad($url) {
+    public static function downLoad($url, $header) {
         $type = substr($url, strrpos($url, '.'));
         $filename = md5($url);
         $path = PUL_PATH . 'img/' . $filename . $type;
@@ -19,6 +21,9 @@ class ImgFun {
         }
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+        if (!empty($header)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+        }
         $file = curl_exec($ch);
         curl_close($ch);
         $resource = fopen($path, 'a');
@@ -27,7 +32,7 @@ class ImgFun {
         return $filename . $type;
     }
 
-    public static function upload($file, $token, $supplierid, $funtionname = 'albu', $imagebannername = '') {
+    public static function upload($file, $token, $supplierid, $header, $funtionname = 'albu', $imagebannername = '') {
         $data = ['file' => '@' . $file];
         $url = 'http://upload.dhgate.com/uploadfile?functionname=' . $funtionname . '&supplierid=' . $supplierid . '&imagebannername=' . $imagebannername . '&token=' . $token;
         $curl = curl_init();
@@ -36,6 +41,9 @@ class ImgFun {
         if (0 === strpos(strtolower($url), 'https')) {
             curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0); //对认证证书来源的检查
             curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0); //从证书中检查SSL加密算法是否存在
+        }
+        if (!empty($header)) {
+            curl_setopt($curl, CURLOPT_HTTPHEADER, $header);
         }
         curl_setopt($curl, CURLOPT_POST, true);
         curl_setopt($curl, CURLOPT_SAFE_UPLOAD, false);
