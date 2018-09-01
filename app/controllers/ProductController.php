@@ -1075,9 +1075,10 @@ class ProductController extends ControllerBase {
             }
         }
         $img = \Imgs::findFirst([
-                    'conditions' => 'filename=:filename:',
+                    'conditions' => 'filename=:filename: and username=:username:',
                     'bind' => [
-                        'filename' => $filename
+                        'filename' => $filename,
+                        'username'=>$this->username
                     ],
                     'columns' => 'img_data'
         ]);

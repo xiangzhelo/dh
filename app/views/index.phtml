@@ -49,7 +49,6 @@
                     type: 'GET',
                     dataType: 'json',
                     data: {user: user},
-                    async: false,
                     success: function (json) {
                         if (json['status'] != 'success') {
                             alert('用户设置错误');

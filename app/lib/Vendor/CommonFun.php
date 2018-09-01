@@ -126,7 +126,7 @@ class CommonFun {
             foreach ($html->find('#j-product-info-sku .p-property-item') as $item) {
                 $type = strtolower($item->find('.p-item-title', 0)->plaintext);
                 $ids = [];
-                if (strpos($type, 'color') !== false) {
+                if (strpos($type, 'color') !== false||strpos($type, 'kleur') !== false) {
                     foreach ($item->find('a') as $a) {
                         $id = $a->getAttribute('data-sku-id');
                         $colorList[$id] = [

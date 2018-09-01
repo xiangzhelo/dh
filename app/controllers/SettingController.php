@@ -104,6 +104,7 @@ class SettingController extends ControllerBase {
             $mcurl = new \Lib\Vendor\Mcurl();
             $mcurl->maxThread = $qnum;
             $mcurl->maxTry = 0;
+            $mcurl->opt[CURLOPT_TIMEOUT] = 300;
             $num = 0;
             foreach ($queues as $item) {
                 if ($item->status == 0) {
