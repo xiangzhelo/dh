@@ -1152,7 +1152,7 @@ class ProductController extends ControllerBase {
                 $sNum++;
             }
         }
-        $this->db->execute('update product set status=4 where id in (' . implode(',', $ids) . ')');
+//        $this->db->execute('update product set status=4 where id in (' . implode(',', $ids) . ')');
         $msg = '添加' . $sNum . '条队列成功,' . $eNum . '失败';
         $this->echoJson(['status' => 'success', 'msg' => $msg]);
     }

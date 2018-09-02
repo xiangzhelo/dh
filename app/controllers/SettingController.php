@@ -25,6 +25,12 @@ class SettingController extends ControllerBase {
                 'users' => ["lakeone" => "lk123456", "oldriver" => "lk171001", "starone" => "lk171001", "missyou2016" => "lk171001", "kebe1" => "lk171001", "ksld" => "lk171001", "walon123" => "lk171001"]
             ];
         }
+        if ($json['run']) {
+            $log = \Log::findFirst(['order' => 'id desc']);
+            if (time() - strtotime($log->createtime) > 60 && time() - strtotime($log->createtime) > $json['time'] * 2) {
+                $json['run'] = 0;
+            }
+        }
         $this->view->json = $json;
     }
 
@@ -250,6 +256,8 @@ class SettingController extends ControllerBase {
     }
 
     public function t2Action() {
+        phpinfo();
+        exit();
         $this->echoJson($_POST);
     }
 

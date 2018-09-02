@@ -1389,4 +1389,37 @@ class LexiconController extends ControllerBase {
         $this->echoJson(['status' => 'success', 'msg' => '删除成功']);
     }
 
+    public function addRefreshQueuesAction() {
+        $ids = $this->request->get('ids');
+        if (empty($ids)) {
+            $this->echoJson(['status' => 'error', 'msg' => '刷新产品数为空']);
+        }
+        $list = \Product::find([
+                    'conditions' => 'id in ({ids:array})',
+                    'bind' => [
+                        'ids' => $ids
+                    ]
+        ]);
+        $eNum = 0;
+        $sNum = 0;
+        foreach ($list as $item) {
+            $queueUrl = MY_DOMAIN . '/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
+            $queue = new \Queue();
+            $queue->queue_url = $queueUrl;
+            $queue->status = 0;
+            $queue->createtime = date('Y-m-d H:i:s');
+            $queue->contents = '分类匹配成功,产品属性匹配';
+
+            $ret = $queue->save();
+            if ($ret == false) {
+                $eNum++;
+            } else {
+                $sNum++;
+            }
+        }
+
+        $msg = '添加' . $sNum . '条队列成功,' . $eNum . '失败';
+        $this->echoJson(['status' => 'success', 'msg' => $msg]);
+    }
+
 }
