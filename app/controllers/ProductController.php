@@ -30,7 +30,7 @@ class ProductController extends ControllerBase {
         }
         $url = 'http://seller.dhgate.com/prodmanage/akey/getGroup.do?_=' . time();
         $curl = new MyCurl();
-        $jsonStr = $curl->get($url, $this->cookie);
+        $jsonStr = $curl->get($url, $this->cookie, $this->header, 30);
         $json = json_decode($jsonStr, true)['result'];
         $productgroupid = isset($_COOKIE['myproductgroupid']) ? $_COOKIE['myproductgroupid'] : '';
         $this->echoJson(['status' => 'success', 'msg' => '获取成功', 'data' => $json, 'productgroupid' => $productgroupid]);
@@ -348,32 +348,36 @@ class ProductController extends ControllerBase {
             }
             $this->echoJson(['status' => 'error', 'msg' => '图片上传失败']);
         }
-        $retStr = MyCurl::post($drafUrl, $data, $this->cookie, ['X-FORWARDED-FOR:' . CommonFun::Rand_IP(), 'CLIENT-IP:' . CommonFun::Rand_IP()]);
-        if (empty($isSave)) {
-            $ret = json_decode($retStr, true);
-            if ($ret['code'] == '1000') {
-                $model = \Product::findFirst($id);
-                $model->dh_product_id = $ret['data'];
-                $model->updatetime = date('Y-m-d H:i:s');
-                $model->current_user = empty($model->current_user) ? $this->username : $model->current_user;
-                $model->status = empty($isSave) ? 2 : 200;
-                $model->save();
-                $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_itemcode' => '', 'dh_product_id' => $model->dh_product_id, 'dh_category_id' => $model->dh_category_id]]);
-            }
-        } else {
-            preg_match('/\{(.*)\}/', $retStr, $arr);
-            if (isset($arr[0])) {
-                $ret = json_decode($arr[0], true);
-                if (isset($ret['itemcode']) && $ret['itemcode'] > 0) {
+        if (!empty($data['prodDraftId']) || empty($isSave)) {
+            $retStr = MyCurl::post($drafUrl, $data, $this->cookie, ['X-FORWARDED-FOR:' . CommonFun::Rand_IP(), 'CLIENT-IP:' . CommonFun::Rand_IP()]);
+            if (empty($isSave)) {
+                $ret = json_decode($retStr, true);
+                if ($ret['code'] == '1000') {
                     $model = \Product::findFirst($id);
-                    $model->dh_itemcode = $ret['itemcode'];
-                    $model->current_user = empty($model->current_user) ? $this->username : $model->current_user;
+                    $model->dh_product_id = $ret['data'];
                     $model->updatetime = date('Y-m-d H:i:s');
-                    $model->status = 200;
+                    $model->current_user = empty($model->current_user) ? $this->username : $model->current_user;
+                    $model->status = empty($isSave) ? 2 : 200;
                     $model->save();
-                    $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_itemcode' => $model->dh_itemcode, 'dh_category_id' => $model->dh_category_id]]);
+                    $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_itemcode' => '', 'dh_product_id' => $model->dh_product_id, 'dh_category_id' => $model->dh_category_id]]);
+                }
+            } else {
+                preg_match('/\{(.*)\}/', $retStr, $arr);
+                if (isset($arr[0])) {
+                    $ret = json_decode($arr[0], true);
+                    if (isset($ret['itemcode']) && $ret['itemcode'] > 0) {
+                        $model = \Product::findFirst($id);
+                        $model->dh_itemcode = $ret['itemcode'];
+                        $model->current_user = empty($model->current_user) ? $this->username : $model->current_user;
+                        $model->updatetime = date('Y-m-d H:i:s');
+                        $model->status = 200;
+                        $model->save();
+                        $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_itemcode' => $model->dh_itemcode, 'dh_category_id' => $model->dh_category_id]]);
+                    }
                 }
             }
+        } else {
+            $retStr = $this->tranProduct($data, $id);
         }
         if ($model->status == '4') {
             $model->updatetime = date('Y-m-d H:i:s');
@@ -382,6 +386,160 @@ class ProductController extends ControllerBase {
         }
         $this->echoJson(['status' => 'error', 'msg' => '保存失败', 'ret' => $retStr]);
         $this->echoJson($data);
+    }
+
+    public function tranProduct($data, $id) {
+        $arr = json_decode($data['attrlist'], true);
+        $attrList = [];
+        foreach ($arr as $v1) {
+            $itemAttrValList = [];
+            foreach ($v1['valueList'] as $v2) {
+                if ($v1['attrName'] == 'BRAND') {
+                    $v2['attrValId'] = 99;
+                    $v2['lineAttrvalName'] = 'No Brand';
+                    $v2['lineAttrvalNameCn'] = '无品牌';
+                    $v1['isbrand'] = 0;
+                }
+                $itemAttrValList[] = [
+                    'attrId' => (int) $v1['attrId'],
+                    'attrName' => $v1['attrName'],
+                    'attrValId' => (int) $v2['attrValId'],
+                    'lineAttrvalName' => $v2['lineAttrvalName'],
+                    'lineAttrvalNameCn' => empty($v2['lineAttrvalNameCn']) ? '其他' : $v2['lineAttrvalNameCn'],
+                    'picUrl' => $v2['picUrl'],
+                    'brandId' => $v2['brandValId'],
+                ];
+            }
+            if (isset($data['itemcode']) && !empty($data['itemcode'])) {
+                $attrList[] = [
+                    'attrId' => (int) $v1['attrId'],
+                    'attrName' => null,
+                    'attrNameCn' => null,
+                    'isbrand' => (int) $v1['isbrand'],
+                    'itemAttrValList' => $itemAttrValList
+                ];
+            } else {
+                $attrList[] = [
+                    'isbrand' => (int) $v1['isbrand'],
+                    'itemAttrValList' => $itemAttrValList
+                ];
+            }
+        }
+        $imgList = [];
+        $img_arr = json_decode($data['imglist'], true);
+        foreach ($img_arr as $v) {
+            $imgList[] = [
+                'imgMd5' => $v['imgmd5'],
+                'imgUrl' => $v['fileurl'],
+                'type' => '1'
+            ];
+        }
+        $skuList = [];
+        $sku_arr = json_decode($data['proSkuInfo'], true);
+        foreach ($sku_arr[0]['skuInfoList'] as $v1) {
+            $itemSkuAttrvalList = [];
+            foreach ($v1['attrList'] as $v2) {
+                $itemSkuAttrvalList[] = [
+                    'attrId' => (int) $v2['attrId'],
+                    'attrValId' => (int) $v2['attrVid'],
+                    'sizeSpecType' => (int) $v2['type']
+                ];
+            }
+            $sku = [
+                'inventory' => (int) $v1['stock'],
+                'itemSkuAttrvalList' => $itemSkuAttrvalList,
+                'itemSkuInvenList' => [],
+                'retailPrice' => $v1['price'] * 1,
+                'saleStatus' => (int) $v1['status'],
+                'skuCode' => $v1['skuCode']
+            ];
+            if (isset($data['itemcode']) && !empty($data['itemcode'])) {
+                $sku['skuId'] = 0;
+                $sku['skuMD5'] = null;
+                $sku['itemSkuAttrValueList'] = $sku['itemSkuAttrvalList'];
+                $sku['itemSkuAttrvalList'] = null;
+            }
+            $skuList[] = $sku;
+        }
+        $disList = [];
+        $dis_arr = json_decode($data['discountRange'], true);
+        foreach ($dis_arr as $v) {
+            $disList[] = [
+                'discount' => $v['discount'] / 100,
+                'startQty' => (int) $v['startqty']
+            ];
+        }
+        $specList = [];
+        $spec_arr = json_decode($data['specselfDef'], true);
+        foreach ($spec_arr as $v) {
+            $specList[] = [
+                'attrValId' => (int) $v['attrValId'],
+                'attrValName' => $v['attrvalName'],
+                'picUrl' => $v['picUrl']
+            ];
+        }
+        $productData = [
+            'method' => 'dh.item.add',
+            'v' => '2.0',
+            'access_token' => $this->access_token,
+            'timestamp' => (string) (CommonFun::msectime()),
+            'catePubId' => $data['catepubid'],
+            'itemGroupId' => $data['productgroupid'],
+            'shippingModelId' => $data['shippingmodelid'],
+            'siteId' => 'EN',
+            'vaildDay' => $data['vaildday'],
+            'afterSaleTemplateId' => $data['saleTemplateId'],
+            'sizeTemplateId' => $data['sellerSzTemplateId'],
+            'itemBase' => json_encode([
+                'htmlContent' => $data['elm'],
+                'itemName' => $data['productname'],
+                'keyWord1' => $data['keyword1'],
+                'keyWord2' => $data['keyword2'],
+                'keyWord3' => $data['keyword3'],
+                'shortDesc' => $data['productdesc'],
+                'videoUrl' => $data['videourl']
+                    ], JSON_UNESCAPED_UNICODE),
+            'itemPackage' => json_encode([
+                'grossWeight' => $data['productweight'],
+                'height' => $data['sizeheight'],
+                'itemWeigthRange' => null, //$data['stepweight'],
+                'length' => $data['sizelen'],
+                'measureId' => $data['measureid'],
+                'packingQuantity' => $data['packquantity'],
+                'width' => $data['sizewidth']
+                    ], JSON_UNESCAPED_UNICODE),
+            'itemSaleSetting' => json_encode([
+                'leadingTime' => $data['proLeadingtime'],
+                'maxSaleQty' => $data['maxSaleQty'],
+                'priceConfigType' => $data['setdiscounttype']
+                    ], JSON_UNESCAPED_UNICODE),
+            'itemAttrList' => json_encode($attrList, JSON_UNESCAPED_UNICODE),
+            'itemImgList' => json_encode($imgList, JSON_UNESCAPED_UNICODE),
+            'itemSkuList' => json_encode($skuList, JSON_UNESCAPED_UNICODE),
+            'itemWholesaleRangeList' => json_encode($disList, JSON_UNESCAPED_UNICODE),
+            'itemInventory' => $data['inventory'],
+            'itemAttrGroupList' => $data['attrGroupDetail'],
+            'itemSpecSelfDefList' => json_encode($specList, JSON_UNESCAPED_UNICODE)
+        ];
+        if (isset($data['itemcode']) && !empty($data['itemcode'])) {
+            $productData['itemCode'] = $data['itemcode'];
+            $productData['method'] = 'dh.item.update';
+        }
+//        $this->echoJson($productData);
+        $curl = new MyCurl();
+        $out = $curl->post('http://api.dhgate.com/dop/router', $productData, '', null, 300);
+        $ret = json_decode($out, true);
+        if (isset($ret['itemCode']) && $ret['itemCode'] > 0) {
+            $model = \Product::findFirst($id);
+            $model->dh_itemcode = $ret['itemCode'];
+            $model->current_user = empty($model->current_user) ? $this->username : $model->current_user;
+            $model->updatetime = date('Y-m-d H:i:s');
+            $model->status = 200;
+            $model->save();
+            $this->echoJson(['status' => 'success', 'msg' => '保存成功', 'data' => ['dh_itemcode' => $model->dh_itemcode, 'dh_category_id' => $model->dh_category_id]]);
+        }
+        return $out;
+//        $this->echoJson($productData);
     }
 
     private function addProductInfo(&$productInfo, $key) {
@@ -1078,7 +1236,7 @@ class ProductController extends ControllerBase {
                     'conditions' => 'filename=:filename: and username=:username:',
                     'bind' => [
                         'filename' => $filename,
-                        'username'=>$this->username
+                        'username' => $this->username
                     ],
                     'columns' => 'img_data'
         ]);

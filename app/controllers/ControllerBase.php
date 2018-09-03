@@ -9,6 +9,7 @@ class ControllerBase extends Controller {
 
     public $username = 'lakeone';
     public $password = 'lk123456';
+    public $access_token;
     public $users = [
         'lakeone' => 'lk123456',
         'oldriver' => 'lk171001',
@@ -74,6 +75,7 @@ class ControllerBase extends Controller {
                     ]
         ]);
         if ($cookiesModel instanceof \Cookies) {
+            $this->access_token = $cookiesModel->access_token;
             return $cookiesModel->cookies;
         } else {
             return '';
@@ -131,11 +133,17 @@ class ControllerBase extends Controller {
             $cookiesModel->username = $username;
             $cookiesModel->createtime = date('Y-m-d H:i:s');
         }
+        $tkUrl = 'https://secure.dhgate.com/dop/oauth2/access_token?grant_type=password&username=' . $username . '&password=' . $password . '&client_id=90IjdPyeufNuPJFUd40C&client_secret=4eNrNBz3q1yLOvi12bMcs0Yt9KI9CtpF&scope=basic';
+        $curl = new \Lib\Vendor\Curl();
+        $jsonStr = $curl->get($tkUrl, null, 30);
+        $json = json_decode($jsonStr, true);
         $cookiesModel->cookies_time = time();
         $cookiesModel->cookies = $cookie;
+        $cookiesModel->access_token = $json['access_token'];
         $cookiesModel->updatetime = date('Y-m-d H:i:s');
         $cookiesModel->save();
         $this->cookies_arr = $cookiesModel->toArray();
+        $this->access_token = $cookiesModel->access_token;
         return true;
     }
 
