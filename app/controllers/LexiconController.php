@@ -285,14 +285,14 @@ class LexiconController extends ControllerBase {
                     "颜色id" => "自定义|pic",
                     "颜色orign" => "自定义|pic",
                     "尺码id" => "",
-                    "尺码" => "",
+                    "尺码" => "自定义|other",
                     "尺寸id" => "",
-                    "尺寸" => "自定义|other",
+                    "尺寸" => "",
                     "可用量" => "100",
                     "库存" => "100",
                     "折扣价" => $product_data['价格'],
                     "原价" => $product_data['价格'],
-                    "材质" => isset($product_data['style']) ? $product_data['style'] : 'other',
+                    "材质" => '',
                     "长度" => ""
                 ];
             }
