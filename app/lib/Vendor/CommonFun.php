@@ -8,6 +8,12 @@ use Exception;
 
 class CommonFun {
 
+    public static function msectime() {
+        list($msec, $sec) = explode(' ', microtime());
+        $msectime = (float) sprintf('%.0f', (floatval($msec) + floatval($sec)) * 1000);
+        return $msectime;
+    }
+
     public static function getCookie($cookie, $name) {
         preg_match("/set-cookie: " . $name . "=([^;]*);/i", $cookie, $arr);
         return isset($arr[1]) ? $arr[1] : '';
@@ -126,7 +132,7 @@ class CommonFun {
             foreach ($html->find('#j-product-info-sku .p-property-item') as $item) {
                 $type = strtolower($item->find('.p-item-title', 0)->plaintext);
                 $ids = [];
-                if (strpos($type, 'color') !== false||strpos($type, 'kleur') !== false) {
+                if (strpos($type, 'color') !== false || strpos($type, 'kleur') !== false) {
                     foreach ($item->find('a') as $a) {
                         $id = $a->getAttribute('data-sku-id');
                         $colorList[$id] = [
@@ -140,7 +146,7 @@ class CommonFun {
                     $skuAttr[] = $ids;
                     $postion['color'] = $pos;
                     $pos++;
-                } elseif (strpos($type, 'size') !== false||strpos($type, 'quantity') !== false) {
+                } elseif (strpos($type, 'size') !== false || strpos($type, 'quantity') !== false) {
                     foreach ($item->find('a') as $a) {
                         $id = $a->getAttribute('data-sku-id');
                         $sizes[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;
@@ -149,7 +155,7 @@ class CommonFun {
                     $skuAttr[] = $ids;
                     $postion['size'] = $pos;
                     $pos++;
-                } elseif (strpos($type, 'height') !== false||strpos($type, 'capacity') !== false) {
+                } elseif (strpos($type, 'height') !== false || strpos($type, 'capacity') !== false) {
                     foreach ($item->find('a') as $a) {
                         $id = $a->getAttribute('data-sku-id');
                         $height[$id] = empty($a->find('span')) ? '' : $a->find('span', 0)->plaintext;

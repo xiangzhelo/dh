@@ -25,10 +25,10 @@ class SettingController extends ControllerBase {
                 'users' => ["lakeone" => "lk123456", "oldriver" => "lk171001", "starone" => "lk171001", "missyou2016" => "lk171001", "kebe1" => "lk171001", "ksld" => "lk171001", "walon123" => "lk171001"]
             ];
         }
-        if ($json['run']) {
+        if ($json['switch'] == 1) {
             $log = \Log::findFirst(['order' => 'id desc']);
             if (time() - strtotime($log->createtime) > 60 && time() - strtotime($log->createtime) > $json['time'] * 2) {
-                $json['run'] = 0;
+                $json['switch'] = 0;
             }
         }
         $this->view->json = $json;
@@ -81,6 +81,14 @@ class SettingController extends ControllerBase {
                 die('process abort');
             }
             $this->queue($json['queueNum']);
+            $this->db->execute('update queue set status=400 where status=1 and start_time<"' . date('Y-m-d H:i:s', strtotime('-30 minutes')) . '"');
+            $this->db->execute('update queue set status=402 where status=401 and start_time<"' . date('Y-m-d H:i:s', strtotime('-30 minutes')) . '"');
+            $qCount = \Queue::count([
+                        'conditions' => 'status in (0,1,400,401)'
+            ]);
+            if ($qCount == 0) {
+                $this->db->execute('update product set status=1 where status=4');
+            }
             \Log::createOne('定时任务:' . time(), '定时任务');
             sleep($json['time']);
         } while (true);
@@ -113,6 +121,7 @@ class SettingController extends ControllerBase {
             $mcurl->opt[CURLOPT_TIMEOUT] = 300;
             $num = 0;
             foreach ($queues as $item) {
+                $item->start_time = date('Y-m-d H:i:s');
                 if ($item->status == 0) {
                     $item->status = 1;
                 } else if ($item->status == 400 || $queue->status == 402) {
