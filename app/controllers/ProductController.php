@@ -212,7 +212,7 @@ class ProductController extends ControllerBase {
         $cate140 = ['140002001', '140005']; //时尚配件
         $cate004 = ['004002002', '004002008', '004002011', '004006001', '004006008', '004007001', '004007008']; //珠宝
         $cate005 = ['005002', '005001']; //表
-        $cate143 = ['143103113107', '143103113102', '143106001']; //汽配
+        $cate143 = ['143103113107', '143103113102']; //汽配  143106001车罩
         $cate024 = ['024029008', '024020005007', '024029001002', '024029001001', '024029005004', '024029003', '024029005003', '024026007001'
             , '024026007005', '024003003017', '024026008001', '014026010', '014028011', '024003019005', '024020004003', '024020005003'
             , '024020005002', '024020005001', '024020005007', '024034008001', '024034007002', '024033', '024023002005', '024023002004'
@@ -245,6 +245,8 @@ class ProductController extends ControllerBase {
             $this->echoJson(['status' => 'error', 'msg' => '该分类未开放']);
         }
     }
+
+    private $specMaxLen = 1010;
 
     private function playDraftOrSave($model, $id, $cate = '141001', $isSave = '', $productgroupid = '') {
         if (!empty($model->dh_product_id)) {
@@ -288,6 +290,9 @@ class ProductController extends ControllerBase {
             }
         }
         $this->pubData($data, $sourceData, $html);
+        if (!empty($data['prodDraftId']) || empty($isSave)) {
+            $this->specMaxLen = 1050;
+        }
         if (!empty($productgroupid)) {
             $data['productgroupid'] = $productgroupid;
         }
@@ -305,7 +310,7 @@ class ProductController extends ControllerBase {
             $productInfo['尺码'] = $productInfo['手套尺寸'];
             unset($productInfo['手套尺寸']);
         }
-        if (in_array($model->dh_category_id, ['004002002', '004002008', '004002011', '004006001', '004006008', '004007001', '143103113102', '143103113107', '024029008', '024020005007', '024020005007', '024034008001', '024034007002', '024023002005', '024023002004', '024023001015', '024023001020', '024023001005', '024023001013', '024023001003', '024023001001', '004006001', '004006008'])) {
+        if (in_array($model->dh_category_id, ['004002002', '004002008', '004002011', '004006001', '004006008', '004007001', '143103113102', '143103113107', '024029008', '024020005007', '024020005007', '024034008001', '024034007002', '024023002005', '024023002004', '024023001015', '024023001020', '024023001005', '024023001013', '024023001003', '024023001001', '004006001', '004006008', '135005006'])) {
             $this->addProductInfo($productInfo, '颜色');
         }
         if (in_array($model->dh_category_id, ['024020004003'])) {
@@ -407,7 +412,7 @@ class ProductController extends ControllerBase {
                     'lineAttrvalName' => $v2['lineAttrvalName'],
                     'lineAttrvalNameCn' => empty($v2['lineAttrvalNameCn']) ? '其他' : $v2['lineAttrvalNameCn'],
                     'picUrl' => $v2['picUrl'],
-                    'brandId' => $v2['brandValId'],
+                    'brandId' => isset($v2['brandValId']) ? $v2['brandValId'] : '',
                 ];
             }
             if (isset($data['itemcode']) && !empty($data['itemcode'])) {
@@ -489,7 +494,7 @@ class ProductController extends ControllerBase {
             'siteId' => 'EN',
             'vaildDay' => $data['vaildday'],
             'afterSaleTemplateId' => $data['saleTemplateId'],
-            'sizeTemplateId' => $data['sellerSzTemplateId'],
+            'sizeTemplateId' => isset($data['sellerSzTemplateId']) ? $data['sellerSzTemplateId'] : '',
             'itemBase' => json_encode([
                 'htmlContent' => $data['elm'],
                 'itemName' => $data['productname'],
@@ -544,7 +549,7 @@ class ProductController extends ControllerBase {
 
     private function addProductInfo(&$productInfo, $key) {
         $valueList = [];
-        for ($i = 1000; $i < 1050; $i++) {
+        for ($i = 1000; $i < $this->specMaxLen; $i++) {
             $valueList[] = [
                 'attrValId' => (string) $i,
                 'picUrl' => '',
@@ -585,6 +590,9 @@ class ProductController extends ControllerBase {
                 $colorsList = $this->color($sourceData['属性'], $colorsList);
             }
             if (isset($productInfo['颜色']['is_add']) && $productInfo['颜色']['is_add'] == '1' && count($colorsList) == 0) {
+                $Color_Id = '';
+            }
+            if (isset($productInfo['颜色']['buyAttr']) && $productInfo['颜色']['buyAttr'] != '1' && count($colorsList) == 0) {
                 $Color_Id = '';
             }
         }
@@ -782,7 +790,7 @@ class ProductController extends ControllerBase {
     private function attr(&$data, &$productInfo, &$attrlist, $sourceData) {
         $num = 2;
         foreach ($productInfo as $key => $arr) {
-            if (($arr['buyAttr'] == '1') || $arr['located'] == '1') {//in_array($key, ['颜色', '尺码', '尺寸'])
+            if (($arr['buyAttr'] == '1') || $arr['located'] == '1' || $arr['attrId'] == '782902') {//in_array($key, ['颜色', '尺码', '尺寸'])
                 continue;
             }
             $attrlist[$num] = [
@@ -900,6 +908,17 @@ class ProductController extends ControllerBase {
                 $data['c_' . $arr['attrId'] . '_vname'] = $arr['attrId'] . '_' . $attrlist[$num]['valueList'][$l - 1]['attrValId'];
             } else {
                 $data['c_' . $arr['attrId'] . '_vname'] = '';
+            }
+
+            if ($arr['lineAttrName'] == 'Compatible') {//Compatible
+                $num++;
+                $attrlist[$num] = [
+                    'class' => 'com.dhgate.syi.model.ProductAttributeVO',
+                    'attrId' => '1005500',
+                    'attrName' => 'Compatiale Model',
+                    'isbrand' => '0',
+                    'valueList' => [$this->setValueList(0, 'other', '', '0', '')],
+                ];
             }
             $num++;
         }
@@ -1038,7 +1057,10 @@ class ProductController extends ControllerBase {
         if (!isset($productInfo[$keyCn]['valueList']) || empty($productInfo[$keyCn]['valueList'])) {
             return [];
         }
-        $skuList = array_column($productInfo[$keyCn]['valueList'], null, 'lineAttrvalName');
+        $skuList = [];
+        foreach ($productInfo[$keyCn]['valueList'] as $v) {
+            $skuList[$v['lineAttrvalName']] = $v;
+        }
         if (empty($skuList)) {
             return [];
         }
@@ -1091,6 +1113,9 @@ class ProductController extends ControllerBase {
         }
         $list = array_filter($list);
         if (isset($productInfo[$keyCn]['is_add']) && $productInfo[$keyCn]['is_add'] == '1' && count($list) == 0) {
+            $id = '';
+        }
+        if (isset($productInfo[$keyCn]['buyAttr']) && $productInfo[$keyCn]['buyAttr'] != '1' && count($list) == 0) {
             $id = '';
         }
         return $list;

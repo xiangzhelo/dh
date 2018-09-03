@@ -208,12 +208,12 @@ class LexiconController extends ControllerBase {
             '014026020001', '014026020003', '014027001006', '014027001001', '014027002012', '014027002001'];
         $cate006 = ['006003112', '006003115', '006003115', '006011116', '006011117', '006007176', '006007167']; //玩具礼物
         $cate142 = ['142006003', '142006005', '142006001', '142003011', '142003003003']; //母婴用品
-        $cate135 = ['135005002', '135010002', '135010003']; //手机和手机附件(, '135005006'手机膜不适配)
-        $cate008 = ['008002']; //消费类电子（'008178', 耳机与耳塞）
-        $cate140 = [ '140005']; //时尚配件('140002001', 不适配)
+        $cate135 = ['135005002', '135010002', '135010003', '135005006']; //手机和手机附件
+        $cate008 = ['008002', '008178']; //消费类电子
+        $cate140 = [ '140005', '140002001']; //时尚配件
         $cate004 = ['004002002', '004002008', '004002011', '004006001', '004006008', '004007001', '004007008']; //珠宝
         $cate005 = ['005002', '005001']; //表
-        $cate143 = ['143103113102', '143103113107']; //汽配（'143106001',车罩不适配）
+        $cate143 = ['143103113102', '143103113107', '143106001']; //汽配
         $cate024 = ['024029008', '024020005007', '024029001002', '024029001001', '024029005004', '024029003', '024029005003', '024026007001'
             , '024026007005', '024003003017', '024026008001', '014026010', '014028011', '024003019005', '024020004003', '024020005003'
             , '024020005002', '024020005001', '024020005007', '024034008001', '024034007002', '024033', '024023002005', '024023002004'
@@ -460,25 +460,25 @@ class LexiconController extends ControllerBase {
             $type = (isset($product_data['type']) ? $product_data['type'] : '') . (isset($product_data['item type']) ? $product_data['item type'] : '');
             $title = strtolower($product_data['产品标题']);
             if (strpos($type, 'body') !== false) {
-                $product_data['类型'] = '全身贴膜';
+                $product_data['类型'] = 'full body';
             } elseif (strpos($type, 'front') !== false) {
-                $product_data['类型'] = '前贴膜';
+                $product_data['类型'] = 'front';
             } elseif (strpos($type, 'mirror') !== false) {
-                $product_data['类型'] = '镜面';
+                $product_data['类型'] = 'mirror';
             } elseif (strpos($type, 'glare') !== false) {
-                $product_data['类型'] = '防偷窥';
+                $product_data['类型'] = 'anti-glare';
             } elseif (strpos($type, 'scratch') !== false) {
-                $product_data['类型'] = '抗划痕';
+                $product_data['类型'] = 'anti-scratch';
             } elseif (strpos($title, 'body') !== false) {
-                $product_data['类型'] = '全身贴膜';
+                $product_data['类型'] = 'full body';
             } elseif (strpos($title, 'front') !== false) {
-                $product_data['类型'] = '前贴膜';
+                $product_data['类型'] = 'front';
             } elseif (strpos($title, 'mirror') !== false) {
-                $product_data['类型'] = '镜面';
+                $product_data['类型'] = 'mirror';
             } elseif (strpos($title, 'glare') !== false) {
-                $product_data['类型'] = '防偷窥';
+                $product_data['类型'] = 'anti-glare';
             } elseif (strpos($title, 'scratch') !== false) {
-                $product_data['类型'] = '抗划痕';
+                $product_data['类型'] = 'anti-scratch';
             }
             if (isset($product_data['类型'])) {
                 foreach ($product_data['属性'] as $key => $value) {
