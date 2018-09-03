@@ -268,6 +268,18 @@ class LexiconController extends ControllerBase {
                 }
             }
         }
+        if (in_array($categoryModel->dh_category_id, ['004007001'])) {
+            if (count($product_data['属性']) > 0) {
+                foreach ($product_data['属性'] as $k => $v) {
+                    $product_data['属性'][$k]['尺码'] = empty($v['尺码']) ? $v['尺码'] : trim(
+                                    (!empty($v['尺码']) ? ' ' . $v['尺码'] : '')
+                                    . (!empty($v['尺寸']) ? ' ' . $v['尺寸'] : '')
+                                    . (!empty($v['长度']) ? ' ' . $v['长度'] : '')
+                                    . (!empty($v['材质']) ? ' ' . $v['材质'] : ''));
+                    $product_data['属性'][$k]['尺码'] = empty($product_data['属性'][$k]['尺码']) ? '自定义|other' : $product_data['属性'][$k]['尺码'];
+                }
+            }
+        }
     }
 
     private function cate143($categoryModel, &$product_data) {
