@@ -278,6 +278,23 @@ class LexiconController extends ControllerBase {
                                     . (!empty($v['材质']) ? ' ' . $v['材质'] : ''));
                     $product_data['属性'][$k]['尺码'] = empty($product_data['属性'][$k]['尺码']) ? '自定义|other' : $product_data['属性'][$k]['尺码'];
                 }
+            } else {
+                $product_data['属性'][] = [
+                    "颜色" => "自定义|pic",
+                    "图片" => array_slice($product_data['产品图片'], -1, 1)[0],
+                    "颜色id" => "自定义|pic",
+                    "颜色orign" => "自定义|pic",
+                    "尺码id" => "",
+                    "尺码" => "",
+                    "尺寸id" => "",
+                    "尺寸" => "自定义|other",
+                    "可用量" => "100",
+                    "库存" => "100",
+                    "折扣价" => $product_data['价格'],
+                    "原价" => $product_data['价格'],
+                    "材质" => isset($product_data['style']) ? $product_data['style'] : 'other',
+                    "长度" => ""
+                ];
             }
         }
     }
