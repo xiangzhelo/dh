@@ -219,12 +219,12 @@ class LexiconController extends ControllerBase {
             , '024020005002', '024020005001', '024020005007', '024034008001', '024034007002', '024033', '024023002005', '024023002004'
             , '024023001015', '024023001020', '024023001005', '024023001013', '024023001003', '024023001001', '024037']; //运动与户外产品
         if (in_array($categoryModel->dh_category_id, ['141001', '141003', '141004', '141006', '141007'])) {
-            $this->cate014($categoryModel, $product_data);
             $this->matchProduct($product, $product_data, $categoryModel);
         } else if (in_array($categoryModel->dh_category_id, ['137006', '137005', '137011008', '137011005', '137010', '137011004', '137011002', '137011003'])) {
             $this->cate137($categoryModel, $product_data);
             $this->matchProduct($product, $product_data, $categoryModel);
         } else if (in_array($categoryModel->dh_category_id, $cate014)) {
+            $this->cate014($categoryModel, $product_data);
             $this->matchProduct($product, $product_data, $categoryModel);
         } else if (in_array($categoryModel->dh_category_id, $cate006)) {
             $this->cate006($categoryModel, $product_data);
@@ -279,9 +279,7 @@ class LexiconController extends ControllerBase {
         //014027002012
         if (in_array($categoryModel->dh_category_id, ['014027002012'])) {
             foreach ($product_data['属性'] as $k => $v) {
-                if (empty($v['类型'])) {
-                    $product_data['属性'][$k]['类型'] = '自定义|other';
-                }
+                $product_data['属性'][$k]['尺码'] = 'other';
             }
         }
     }

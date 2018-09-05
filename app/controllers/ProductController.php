@@ -328,11 +328,8 @@ class ProductController extends ControllerBase {
             $this->addProductInfo($productInfo, '尺寸');
         }
         if(in_array($model->dh_category_id, ['014027002012'])){
-            $productInfo['类型'] = $productInfo['袜子类型'];
+            $productInfo['尺码'] = $productInfo['袜子类型'];
             unset($productInfo['袜子类型']);
-            $linshi = $productInfo['颜色'];
-            unset($productInfo['颜色']);
-            $productInfo['颜色'] = $linshi;
         }
 
         if (in_array($model->dh_category_id, ['024020005002', '024029005004','135005002'])) {
