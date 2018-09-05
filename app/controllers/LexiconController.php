@@ -203,13 +203,13 @@ class LexiconController extends ControllerBase {
             $product_data['价格'] = trim($priceArr[count($priceArr) - 1]);
         }
         $cate014 = ['014028007', '014028004', '014028008002', '014028005', '014028003001', '014028006', '014028002', '014028009',
-            '014028001001', '014028001002', '014028010', '014026018', '014026016', '014026003', '014026004', '014026011', '014026014',
+            '014028001001', '014028001002', '014028010', '014026018001', '014026016', '014026003', '014026004', '014026011', '014026014',
             '014026005001', '014026012', '014026013', '014026007', '014026006', '014026010', '014026002003', '014026002001', '014026002004',
-            '014026020001', '014026020003', '014027001006', '014027001001', '014027002012', '014027002001'];
+            '014026020001', '014026020003', '014027001006', '014027001001', '014027002012', '014027002001']; //服装
         $cate006 = ['006003112', '006003115', '006003115', '006011116', '006011117', '006007176', '006007167']; //玩具礼物
         $cate142 = ['142006003', '142006005', '142006001', '142003011', '142003003003']; //母婴用品
         $cate135 = ['135005002', '135010002', '135010003', '135005006']; //手机和手机附件
-        $cate008 = ['008002', '008178']; //消费类电子
+        $cate008 = ['008178']; //消费类电子  '008002', MP4变成了音箱所以取消
         $cate140 = [ '140005', '140002001']; //时尚配件
         $cate004 = ['004002002', '004002008', '004002011', '004006001', '004006008', '004007001', '004007008']; //珠宝
         $cate005 = ['005002', '005001']; //表
@@ -219,8 +219,10 @@ class LexiconController extends ControllerBase {
             , '024020005002', '024020005001', '024020005007', '024034008001', '024034007002', '024033', '024023002005', '024023002004'
             , '024023001015', '024023001020', '024023001005', '024023001013', '024023001003', '024023001001', '024037']; //运动与户外产品
         if (in_array($categoryModel->dh_category_id, ['141001', '141003', '141004', '141006', '141007'])) {
+            $this->cate014($categoryModel, $product_data);
             $this->matchProduct($product, $product_data, $categoryModel);
         } else if (in_array($categoryModel->dh_category_id, ['137006', '137005', '137011008', '137011005', '137010', '137011004', '137011002', '137011003'])) {
+            $this->cate137($categoryModel, $product_data);
             $this->matchProduct($product, $product_data, $categoryModel);
         } else if (in_array($categoryModel->dh_category_id, $cate014)) {
             $this->matchProduct($product, $product_data, $categoryModel);
@@ -256,6 +258,41 @@ class LexiconController extends ControllerBase {
             $product->need_attribute = '该分类未开放';
             $product->save();
             $this->echoJson(['status' => 'success', 'msg' => '该分类未开放']);
+        }
+    }
+
+    private function cate014($categoryModel, &$product_data) {
+//        if (count($product_data['属性']) > 0) {
+//            foreach ($product_data['属性'] as $k => $v) {
+//                if ($v['尺码'] == 'S') {
+//                    $product_data['属性'][$k]['尺码'] = 'Free';
+//                }
+//            }
+//        }
+        if (in_array($categoryModel->dh_category_id, ['014027002001', '014027001001'])) {//014027002001
+            foreach ($product_data['属性'] as $k => $v) {
+                if ($v['尺码'] == 'XXXL') {
+                    $product_data['属性'][$k]['尺码'] = '3XL';
+                }
+            }
+        }
+        //014027002012
+        if (in_array($categoryModel->dh_category_id, ['014027002012'])) {
+            foreach ($product_data['属性'] as $k => $v) {
+                if (empty($v['类型'])) {
+                    $product_data['属性'][$k]['类型'] = '自定义|other';
+                }
+            }
+        }
+    }
+
+    private function cate137($categoryModel, &$product_data) {
+        if (in_array($categoryModel->dh_category_id, ['137010'])) {
+            if (count($product_data['属性']) > 0) {
+                foreach ($product_data['属性'] as $k => $v) {
+                    $product_data['属性'][$k]['尺码'] = '自定义|others';
+                }
+            }
         }
     }
 
@@ -348,7 +385,7 @@ class LexiconController extends ControllerBase {
         if (in_array($categoryModel->dh_category_id, ['024020005001'])) {
             foreach ($product_data['属性'] as $k => $v) {
                 if (empty($v['尺寸'])) {
-                    $product_data['属性'][$k]['尺寸'] = 'other';
+                    $product_data['属性'][$k]['尺寸'] = empty($v['尺码']) ? 'other' : $v['尺码'];
                 }
             }
         }
@@ -513,6 +550,11 @@ class LexiconController extends ControllerBase {
                 foreach ($product_data['属性'] as $key => $value) {
                     $product_data['属性'][$key]['类型'] = $product_data['类型'];
                 }
+            }
+        }
+        if (in_array($categoryModel->dh_category_id, ['135005002', '135005006'])) {
+            foreach ($product_data['属性'] as $key => $v) {
+                $product_data['属性'][$key]['尺码'] = $v['材质'];
             }
         }
     }
