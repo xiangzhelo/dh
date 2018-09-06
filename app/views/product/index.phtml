@@ -23,7 +23,7 @@
             <a class="item <?php echo $status == '200' ? 'active' : ''; ?>" href="?status=200">已上传</a>
         </div>
     </div>
-    <?php if ($status != '4' && $status != '400,402') { ?>
+    <?php if ($status != '4' && $status != '400,402' && $status != '0') { ?>
         <button class="ui primary button" style="margin-top:10px;" onclick="addProducts(0);">批量草稿</button><button class="ui primary button" style="margin-top:10px;" onclick="addProducts(1);">批量添加</button><span id="cateSelect"></span><button class="ui primary button" style="margin-top:10px;" onclick="searchCateSelect();">搜索</button>
         默认选择分组 ： <select class="groupSelectBox" id="groupid" onchange="setGroup();" style="height: 30px;"></select>
     <?php } else { ?>
@@ -45,7 +45,7 @@
                     $opt .= '<br /><button class="ui primary button draft_btn" onclick="sub_draft(' . $item['id'] . ',\'1\');">提交产品</button>';
                 }
                 echo '<tr aid="' . $item['id'] . '">
-                    <td>' . ($item['status'] === '1' || $status == '4' || $status == '400,402' ? '<input type="checkbox" class="ids" value="' . $item['id'] . '">' : '') . '</td>
+                    <td>' . ($item['status'] === '1' || $status == '4' || $status == '400,402' || $status == '0' ? '<input type="checkbox" class="ids" value="' . $item['id'] . '">' : '') . '</td>
                     <td style="text-align: center;"><a href="/collection/data?id=' . $item['id'] . '" target="_blank">' . $item['id'] . '<br />查看</a></td>
                     <td style="text-align: center;">' . date('m-d H:i', strtotime($item['createtime'])) . '</td> 
                     <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank"><img src="' . $item['source_img'] . '" style="height:60px;margin:3px 10px;"/></a></td> 
