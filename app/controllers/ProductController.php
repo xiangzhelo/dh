@@ -405,10 +405,13 @@ class ProductController extends ControllerBase {
             $error = $errorJson['status']['subErrors']['message'];
         } else {
             preg_match('/\{(.*)\}/', $retStr, $arr);
-            if (isset($arr['errors'])) {
-                $errKey = array_values($arr['errors'])[0];
-                if (isset($this->errorsArr[$errKey]) && isset($this->errorSkus[$this->errorsArr[$errKey]])) {
-                    $error = $this->errorSkus[$this->errorsArr[$errKey]]['name'] . '错误或者缺失';
+            if (isset($arr[0])) {
+                $ret = json_decode($arr[0], true);
+                if (isset($ret['errors'])) {
+                    $errKey = array_values($ret['errors'])[0];
+                    if (isset($this->errorsArr[$errKey]) && isset($this->errorSkus[$this->errorsArr[$errKey]])) {
+                        $error = $this->errorSkus[$this->errorsArr[$errKey]]['name'] . '错误或者缺失';
+                    }
                 }
             }
         }
