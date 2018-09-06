@@ -399,26 +399,26 @@ class ProductController extends ControllerBase {
         } else {
             $retStr = $this->tranProduct($data, $id);
         }
-        if ($model->status == '4') {
-            $error = '';
-            $errorJson = json_decode($retStr, true);
-            if (isset($errorJson['status']['subErrors']['message'])) {
-                $error = $errorJson['status']['subErrors']['message'];
-            } else {
-                preg_match('/\{(.*)\}/', $retStr, $arr);
-                if (isset($arr['errors'])) {
-                    $errKey = array_values($arr['errors'])[0];
-                    if (isset($this->errorsArr[$errKey]) && isset($this->errorSkus[$this->errorsArr[$errKey]])) {
-                        $error = $this->errorSkus[$this->errorsArr[$errKey]]['name'] . '错误或者缺失';
-                    }
+        $error = '';
+        $errorJson = json_decode($retStr, true);
+        if (isset($errorJson['status']['subErrors']['message'])) {
+            $error = $errorJson['status']['subErrors']['message'];
+        } else {
+            preg_match('/\{(.*)\}/', $retStr, $arr);
+            if (isset($arr['errors'])) {
+                $errKey = array_values($arr['errors'])[0];
+                if (isset($this->errorsArr[$errKey]) && isset($this->errorSkus[$this->errorsArr[$errKey]])) {
+                    $error = $this->errorSkus[$this->errorsArr[$errKey]]['name'] . '错误或者缺失';
                 }
             }
+        }
+        if ($model->status == '4') {
             $model->need_attribute = $error;
             $model->updatetime = date('Y-m-d H:i:s');
             $model->status = 402;
             $model->save();
         }
-        $this->echoJson(['status' => 'error', 'msg' => '保存失败', 'ret' => $retStr]);
+        $this->echoJson(['status' => 'error', 'msg' => empty($error) ? '失败' : $error, 'ret' => $retStr]);
         $this->echoJson($data);
     }
 
