@@ -432,7 +432,7 @@ class LexiconController extends ControllerBase {
         }
         if (in_array($categoryModel->dh_category_id, ['024020005001'])) {
             foreach ($product_data['属性'] as $k => $v) {
-                $product_data['属性'][$k]['尺寸'] = empty($v['尺码']) ? 'other' : $v['尺码'];
+                $product_data['属性'][$k]['尺寸'] = empty($v['尺码']) ? 'others' : $v['尺码'];
             }
         }
         if (in_array($categoryModel->dh_category_id, ['024026007001', '024026007005'])) {
