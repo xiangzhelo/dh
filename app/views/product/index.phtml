@@ -53,7 +53,7 @@
                     <td style="text-align: center;">' . $item['current_user'] . '</td>
                     <td style="text-align: center;" class="opt_td">'
                 . ($item['status'] == 400 ? '放弃' : '')
-                . ($item['status'] == 402 ? '失败' : '')
+                . ($item['status'] == 402 ? '<span style="color:red;">失败 ' . $item['need_attribute'] . '</span>' : '')
                 . ($item['status'] == 200 ? '<a href="http://seller.dhgate.com/syi/edit.do?pid=' . $item['dh_itemcode'] . '" target="_blank">查看产品</a> <a href="http://www.dhgate.com/product/productdisplay.do?from=product_preview&itemcode=' . $item['dh_itemcode'] . '" target="_blank">预览</a>' : '')
                 . ($item['status'] == 4 ? '等待处理' : '')
                 . ($item['status'] == 2 ? '<a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $item['dh_product_id'] . '&inp_catepubid=' . $item['dh_category_id'] . '&isdraftbox=1" target="_blank">查看草稿</a>' : '')

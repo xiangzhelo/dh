@@ -327,21 +327,21 @@ class ProductController extends ControllerBase {
         if (in_array($model->dh_category_id, ['024033'])) {
             $this->addProductInfo($productInfo, '尺寸');
         }
-        if(in_array($model->dh_category_id, ['014027002012'])){
+        if (in_array($model->dh_category_id, ['014027002012'])) {
             $productInfo['尺码'] = $productInfo['袜子类型'];
             unset($productInfo['袜子类型']);
         }
 
-        if (in_array($model->dh_category_id, ['024020005002', '024029005004','135005002'])) {
+        if (in_array($model->dh_category_id, ['024020005002', '024029005004', '135005002'])) {
             $this->addProductInfo($productInfo, '尺码');
         }
 
-        if(in_array($model->dh_category_id, ['137010'])){//137010
+        if (in_array($model->dh_category_id, ['137010'])) {//137010
             $productInfo['尺码'] = $productInfo['颜色'];
             unset($productInfo['颜色']);
             $this->addProductInfo($productInfo, '颜色');
         }
-        
+
         $this->skuInfo($data, $sourceData, $productInfo);
         if (in_array($cate, ['141001', '014028001001'])) {
             $this->sizeTp($data, $sourceData, $html);
@@ -361,6 +361,7 @@ class ProductController extends ControllerBase {
         $ret = $this->imglist($data, $sourceData);
         if ($ret == false) {
             if ($model->status == '4') {
+                $model->need_attribute = '图片上传失败';
                 $model->status = 402;
                 $model->updatetime = date('Y-m-d H:i:s');
                 $model->save();
@@ -399,6 +400,20 @@ class ProductController extends ControllerBase {
             $retStr = $this->tranProduct($data, $id);
         }
         if ($model->status == '4') {
+            $error = '';
+            $errorJson = json_decode($retStr, true);
+            if (isset($errorJson['status']['subErrors']['message'])) {
+                $error = $errorJson['status']['subErrors']['message'];
+            } else {
+                preg_match('/\{(.*)\}/', $retStr, $arr);
+                if (isset($arr['errors'])) {
+                    $errKey = array_values($arr['errors'])[0];
+                    if (isset($this->errorsArr[$errKey]) && isset($this->errorSkus[$this->errorsArr[$errKey]])) {
+                        $error = $this->errorSkus[$this->errorsArr[$errKey]]['name'] . '错误或者缺失';
+                    }
+                }
+            }
+            $model->need_attribute = $error;
             $model->updatetime = date('Y-m-d H:i:s');
             $model->status = 402;
             $model->save();
@@ -1365,5 +1380,198 @@ class ProductController extends ControllerBase {
             }
         }
     }
+
+    public $errorSkus = [
+        'productattr' => [
+            'name' => "产品属性",
+        ],
+        'productname' => [
+            'name' => "产品标题",
+        ],
+        'keyword1' => [
+            'name' => "英文产品关键词",
+        ],
+        'keyword2' => [
+            'name' => "英文产品关键词",
+        ],
+        'keyword3' => [
+            'name' => "英文产品关键词",
+        ],
+        'div_imgcontainer' => [
+            'name' => "产品图片",
+        ],
+        'selectCategoryInput' => [
+            'name' => "产品类目",
+        ],
+        'productdesc' => [
+            'name' => "产品简短描述",
+        ],
+        'featureshtml' => [
+            'name' => "产品详细描述",
+        ],
+        'measureid' => [
+            'name' => "销售产品计量单位",
+        ],
+        'productweight' => [
+            'name' => "产品包装后重量",
+        ],
+        'baseqt' => [
+            'name' => "产品计重阶梯数量",
+        ],
+        'stepqt' => [
+            'name' => "产品计重阶梯的增加数量",
+        ],
+        'stepweight' => [
+            'name' => "产品计重阶梯的增加重量",
+        ],
+        'sizelen' => [
+            'name' => "产品包装后长度",
+        ],
+        'sizewidth' => [
+            'name' => "产品包装后宽度",
+        ],
+        'sizeheight' => [
+            'name' => "产品包装后高度",
+        ],
+        'productprice' => [
+            'name' => "产品价格",
+        ],
+        'productinventory' => [
+            'name' => "产品备货信息",
+        ],
+        'shippingmodelid' => [
+            'name' => "运费设置",
+        ],
+        'promisehtml' => [
+            'name' => "服务承诺",
+        ],
+        'others' => [
+            'name' => "其他问题",
+        ],
+        'googleshopping' => [
+            'name' => "站内外推广图片",
+        ],
+        'validatecode' => [
+            'name' => "验证码",
+        ],
+        'saleinfo' => [
+            'name' => "产品销售信息",
+        ],
+        'saletemplate' => [
+            'name' => "售后服务模板",
+        ],
+        'sellerSzTemplate' => [
+            'name' => "尺码模板",
+        ]
+    ];
+    public $errorsArr = [
+        "error.empty.productproductname2" => "productname",
+        "error.empty.productproductname3" => "productname",
+        "error.empty.productproductname4" => "productname",
+        "error.empty.productproductname5" => "productname",
+        "error.empty.productproductname6" => "productname",
+        "error.empty.productproductname7" => "productname",
+        "error.empty.productproductname8" => "productname",
+        "error.empty.productproductnamelen" => "productname",
+        "error.empty.productproductnamechinese" => "productname",
+        "error.productentry.productnameekeywords" => "productname",
+        "error.productentry.productnameikeywords" => "productname",
+        "error.productentry.productnamerepeat" => "productname",
+        "error.prodbase.keywords.scripterror" => "productname",
+        "error.product.isstate.del" => "productname",
+        "error.empty.productpicurl7" => "div_imgcontainer",
+        "errors.product.userindo_img" => "div_imgcontainer",
+        "errors.product.userindo_img8" => "div_imgcontainer",
+        "errors.product.userindo_img6" => "div_imgcontainer",
+        "error.empty.picurl1" => "div_imgcontainer",
+        "error.empty.productpromisehtmlempty" => "promisehtml",
+        "error.empty.productpromisehtmlsize" => "promisehtml",
+        "error.empty.productpromisehtmlchinese" => "promisehtml",
+        "error.empty.productpromisehtmlupload" => "promisehtml",
+        "error.empty.productfeatureshtml6" => "featureshtml",
+        "error.empty.productfeatureshtmlupload" => "featureshtml",
+        "error.empty.error.html5000" => "featureshtml",
+        "error.empty.productpricetypechinese" => "productprice",
+        "error.empty.productsupplierprice15" => "productprice",
+        "error.empty.productsupplierprice10" => "productprice",
+        "error.empty.productsupplierprice9" => "productprice",
+        "error.empty.productsupplierprice8" => "productprice",
+        "error.empty.productsupplierprice" => "productprice",
+        "error.empty.productpostday" => "productprice",
+        "error.empty.productprice" => "productprice",
+        "error.empty.productsample" => "productprice",
+        "error.empty.productsample2" => "productprice",
+        "error.empty.productsample4" => "productprice",
+        "error.empty.productsample5" => "productprice",
+        "error.empty.productsample6" => "productprice",
+        "error.empty.productsample7" => "productprice",
+        "error.empty.productvaildday" => "productprice",
+        "error.empty.productvaildday" => "productprice",
+        "error.productentry.emptyattrname" => "productattr",
+        "error.productentry.emptyattrval" => "productattr",
+        "error.productentry.onlyhaveattrnoval" => "productattr",
+        "error.productentry.existemptyattrval" => "productattr",
+        "error.productentry.outlimit.proattrvalcount" => "productattr",
+        "error.productentry.lengthoutlimit" => "productattr",
+        "error.productentry.nonenglish" => "productattr",
+        "error.productentry.brandkeyword" => "productattr",
+        "error.productentry.illegalproductattr" => "productattr",
+        "error.productentry.attrempty" => "productattr",
+        "error.productentry.illegalbrand" => "productattr",
+        "error.productentry.repeat.productattrval" => "productattr",
+        "error.productentry.nonnumric" => "productattr",
+        "error.productentry.attrvalidcorrect" => "productattr",
+        "error.productentry.lengthoutlimit.selfdefined" => "productattr",
+        "error.productentry.picurllengthoutlimit" => "productattr",
+        "error.productentry.emptyotherval" => "productattr",
+        "error.productentry.nonenglish.selfdefined" => "productattr",
+        "error.match.sku.attr" => "productattr",
+        "error.productentry.scriptattrname" => "productattr",
+        "error.productentry.scripterror" => "productattr",
+        "error.productentry.scriptattrval" => "productattr",
+        "error.emptyValName.scriptSpecSelf" => "productattr",
+        "error.productentry.scripterror.selfdefined" => "productattr",
+        "error.productentry.attr.attrvalname.exists" => "productattr",
+        "empty.Compatible.category" => "productattr",
+        "empty.Compatible.category.detail" => "productattr",
+        "empty.Compatible.category.detail.attrId" => "productattr",
+        "empty.Compatible.category.detail.attrValId" => "productattr",
+        "error.empty.category" => "selectCategoryInput",
+        "error.category.none" => "selectCategoryInput",
+        "error.empty.productcatalogid6" => "selectCategoryInput",
+        "error.empty.productcatalogid7" => "selectCategoryInput",
+        "label.productedit.mustinputpackageweiht" => "measureid",
+        "label.productedit.mustimputpackagelength" => "measureid",
+        "label.productedit.mustimputpackagewidth" => "measureid",
+        "label.productedit.mustimputpackageheight" => "measureid",
+        "error.empty.shipset1" => "shippingmodelid",
+        "error.empty.shipset2" => "shippingmodelid",
+        "error.empty.shipset3" => "shippingmodelid",
+        "error.empty.shipset4" => "shippingmodelid",
+        "error.empty.shipset5" => "shippingmodelid",
+        "error.empty.shipset6" => "shippingmodelid",
+        "error.empty.shipset11" => "shippingmodelid",
+        "error.empty.shipset12" => "shippingmodelid",
+        "error.empty.productproductdesc3" => "productdesc",
+        "error.empty.productproductdesc4" => "productdesc",
+        "error.empty.productproductdesc5" => "productdesc",
+        "error.productentry.productdesckeywords" => "productdesc",
+        "error.product.googleshopping.required" => "googleshopping",
+        "error.googleshopping.update" => "googleshopping",
+        "error.product.verifycode" => "validatecode",
+        "error.product.InventoryLocation.sku.saleStatus" => "saleinfo",
+        "error.product.setsample" => "saleinfo",
+        "error.saletemplate.empty" => "saletemplate",
+        "error.saletemplate.required" => "saletemplate",
+        "error.inventory.category" => "saleinfo",
+        "error.empty.sku.inventory" => "saleinfo",
+        "error.productentry.syi.blackerror" => "others",
+        "error.empty.cmtablejson.sztemplate" => "sellerSzTemplate",
+        "error.create.sztemplate" => "sellerSzTemplate",
+        "error.szRequired.szTemplate" => "sellerSzTemplate",
+        "stop.status.class.szseller" => "sellerSzTemplate",
+        "error.author.prodnum.supplier" => "selectCategoryInput",
+        "error.author.category.supplier" => "selectCategoryInput"
+    ];
 
 }
