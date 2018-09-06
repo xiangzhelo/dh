@@ -401,8 +401,8 @@ class ProductController extends ControllerBase {
         }
         $error = '';
         $errorJson = json_decode($retStr, true);
-        if (isset($errorJson['status']['subErrors']['message'])) {
-            $error = $errorJson['status']['subErrors']['message'];
+        if (isset($errorJson['status']['subErrors'][0]['message'])) {
+            $error = $errorJson['status']['subErrors'][0]['message'];
         } else {
             preg_match('/\{(.*)\}/', $retStr, $arr);
             if (isset($arr[0])) {
