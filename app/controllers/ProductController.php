@@ -272,7 +272,7 @@ class ProductController extends ControllerBase {
         $data = json_decode(file_get_contents(PUL_PATH . 'catepub_json/' . $cate . '.json'), true);
         for ($i = 0; $i < 4; $i++) {
             $editContent = MyCurl::get($url, $this->cookie, $this->header);
-            if (strpos($editContent, '当前已选择的产品类目') !== false) {
+            if (strpos($editContent, 'titleconbox') !== false) {
                 break;
             } else {
                 $this->needLogin(1);
@@ -479,7 +479,7 @@ class ProductController extends ControllerBase {
                 $itemSkuAttrvalList[] = [
                     'attrId' => (int) $v2['attrId'],
                     'attrValId' => (int) $v2['attrVid'],
-                    'sizeSpecType' => (int) $v2['type']
+                    'sizeSpecType' => $v2['attrId'] == '9999' ? 3 : ((int) $v2['type'])
                 ];
             }
             $sku = [
@@ -512,7 +512,7 @@ class ProductController extends ControllerBase {
             $specList[] = [
                 'attrValId' => (int) $v['attrValId'],
                 'attrValName' => $v['attrvalName'],
-                'picUrl' => $v['picUrl']
+                'picUrl' => $v['picUrl']//$this->getPicUrl($this->access_token, $this->username, $v['picUrl'])
             ];
         }
         $productData = [
@@ -577,6 +577,22 @@ class ProductController extends ControllerBase {
         }
         return $out;
 //        $this->echoJson($productData);
+    }
+
+    public function getPicUrl($token, $imgBannerName, $imageBase64) {
+        $curl = new MyCurl();
+        $post_data = [
+            'method' => 'dh.album.img.upload',
+            'v' => '2.0',
+            'access_token' => $token,
+            'timestamp' => time() * 1000,
+            'funType' => 'avim',
+            'imgBannerName' => $imgBannerName,
+            'imageBase64' => $imageBase64
+        ];
+        $jsonStr = $curl->post('http://api.dhgate.com/dop/router', $post_data, '', null, 300);
+        $json = json_decode($jsonStr, true);
+        return $json['productImg']['l_imgurl'];
     }
 
     private function addProductInfo(&$productInfo, $key) {
@@ -691,12 +707,12 @@ class ProductController extends ControllerBase {
                 if (!empty($attrList)) {
                     $skuInfo[0]['skuInfoList'][] = [
                         'class' => '#',
+                        'attrList' => $attrList,
                         'status' => ($li['库存'] > 0 ? '1' : '0'),
                         'price' => $price,
                         'stock' => '0', //(string) $li['库存'],
                         'skuCode' => '',
-                        'id' => implode('A', $ids),
-                        'attrList' => $attrList
+                        'id' => implode('A', $ids)
                     ];
                 }
                 if (!empty($li['图片'])) {
@@ -765,7 +781,12 @@ class ProductController extends ControllerBase {
             'type' => $type,
             'class' => '##'
         ];
-        $data['c_' . $id . '_vname'] = $id . '_' . $list[$key]['attrValId'];
+        if ($id == '9999') {
+            $data['c_' . $id . '_vname'] = $list[$key]['lineAttrvalName'];
+            $data['text_defineattrval_url_9999_' . $list[$key]['attrValId']] = '';
+        } else {
+            $data['c_' . $id . '_vname'] = $id . '_' . $list[$key]['attrValId'];
+        }
     }
 
     private function skuValueList($data, &$skuValueList, $skuList, $li, &$specselfDef, $key = '颜色', $info = []) {
@@ -978,7 +999,7 @@ class ProductController extends ControllerBase {
                 'filename' => ''
             ];
         }
-        $data['waterMark'] = json_encode($waterMark, JSON_UNESCAPED_UNICODE);
+        $data['waterMark'] = ''; //json_encode($waterMark, JSON_UNESCAPED_UNICODE);
         $data['imglist'] = json_encode($imglistData, JSON_UNESCAPED_UNICODE);
         return true;
     }
@@ -1312,7 +1333,7 @@ class ProductController extends ControllerBase {
         if (!isset($data['result'])) {
             return ['result' => 0];
         }
-        \Imgs::createOne($url, $filename, $path, json_encode($data, JSON_UNESCAPED_UNICODE));
+        \Imgs::createOne($url, $filename, $path, json_encode($data, JSON_UNESCAPED_UNICODE), $this->username);
         return $data;
     }
 

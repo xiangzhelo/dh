@@ -8,11 +8,12 @@ class Imgs extends Model {
         $this->setSource('imgs');
     }
 
-    public static function createOne($source_img_url, $filename, $path, $img_data) {
+    public static function createOne($source_img_url, $filename, $path, $img_data, $username) {
         $model = \Imgs::findFirst([
-                    'conditions' => 'filename=:filename:',
+                    'conditions' => 'filename=:filename: and username=:username:',
                     'bind' => [
-                        'filename' => $filename
+                        'filename' => $filename,
+                        'username' => $username
                     ]
         ]);
         if ($model == false) {
@@ -20,6 +21,7 @@ class Imgs extends Model {
         }
         $model->source_img_url = $source_img_url;
         $model->filename = $filename;
+        $model->username = $username;
         $model->path = $path;
         $model->img_data = $img_data;
         $model->createtime = date('Y-m-d H:i:s');
