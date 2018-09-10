@@ -301,7 +301,7 @@ class LexiconController extends ControllerBase {
                 }
             }
         }
-        if (in_array($categoryModel->dh_category_id, ['004007001'])) {
+        if (in_array($categoryModel->dh_category_id, ['004007001','004002002','004002008','004002011','004006001','004006008'])) {
             if (count($product_data['属性']) > 0) {
                 foreach ($product_data['属性'] as $k => $v) {
                     $product_data['属性'][$k]['尺码'] = empty($v['尺码']) ? $v['尺码'] : trim(

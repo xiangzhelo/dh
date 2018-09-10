@@ -611,7 +611,7 @@ class ProductController extends ControllerBase {
             'attrId' => '9999',
             'style' => '3',
             'is_add' => '1',
-            'type' => '1',
+            'type' => '3',
             'lineAttrName' => $key,
             'valueList' => $valueList
         ];
