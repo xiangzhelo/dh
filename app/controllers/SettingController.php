@@ -252,7 +252,12 @@ class SettingController extends ControllerBase {
         $count = \Queue::count([
                     'conditions' => 'status in (0,1,400,401)'
         ]);
-        $this->echoJson(['status' => 'success', 'msg' => '队列数', 'data' => $count]);
+        $countList = \Queue::find([
+                    'conditions' => 'status in (0,1,400,401)',
+                    'group' => 'contents',
+                    'columns' => 'contents,count(id) as num'
+                ])->toArray();
+        $this->echoJson(['status' => 'success', 'msg' => '队列数', 'data' => $count, 'list' => $countList]);
     }
 
     public function t1Action() {

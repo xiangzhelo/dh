@@ -69,7 +69,7 @@ class LexiconController extends ControllerBase {
                     $queue->queue_url = $queueUrl;
                     $queue->status = 0;
                     $queue->createtime = date('Y-m-d H:i:s');
-                    $queue->content = '分类匹配成功';
+                    $queue->contents = '分类匹配成功';
                     $queue->save();
                 }
             }
