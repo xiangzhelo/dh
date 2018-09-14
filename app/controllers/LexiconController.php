@@ -301,7 +301,7 @@ class LexiconController extends ControllerBase {
                 }
             }
         }
-        if (in_array($categoryModel->dh_category_id, ['004007001','004002002','004002008','004002011','004006001','004006008'])) {
+        if (in_array($categoryModel->dh_category_id, ['004007001', '004002002', '004002008', '004002011', '004006001', '004006008'])) {
             if (count($product_data['属性']) > 0) {
                 foreach ($product_data['属性'] as $k => $v) {
                     $product_data['属性'][$k]['尺码'] = empty($v['尺码']) ? $v['尺码'] : trim(
@@ -566,6 +566,10 @@ class LexiconController extends ControllerBase {
             $titleCount = [];
             foreach ($titleArr as $k1 => $v) {
                 $k = strtolower($v);
+                if (in_array($k, ['weed', 'marijuana', 'hemp', 'medicine', 'drug', 'drugs', 'xanax', 'map', 'magnesium', 'gambing', 'cannabis', 'cannabi-s', 'cannabi'])) {
+                    unset($titleArr[$k1]);
+                    continue;
+                }
                 if (isset($titleCount[$k])) {
                     $titleCount[$k] ++;
                 } else {
@@ -573,6 +577,7 @@ class LexiconController extends ControllerBase {
                 }
                 if ($titleCount[$k] > 3) {
                     unset($titleArr[$k1]);
+                    continue;
                 }
             }
             $product_data['产品标题'] = implode(' ', $titleArr);
