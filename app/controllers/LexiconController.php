@@ -566,7 +566,7 @@ class LexiconController extends ControllerBase {
             $titleCount = [];
             foreach ($titleArr as $k1 => $v) {
                 $k = strtolower($v);
-                if (in_array($k, ['weed', 'marijuana', 'hemp', 'medicine', 'drug', 'drugs', 'xanax', 'map', 'magnesium', 'gambing', 'cannabis', 'cannabi-s', 'cannabi', 'meth', 'condom'])) {
+                if (in_array($k, ['weed', 'marijuana', 'hemp', 'medicine', 'drug', 'drugs', 'xanax', 'map', 'magnesium', 'gambing', 'cannabis', 'cannabi-s', 'cannabi', 'meth', 'condom', 'pony', 'hasbro', 'minecraft', 'superdry', 'poc', 'sword', 'dope', 'billionaire', 'monster', 'everlast', 'buck', 'winmax', 'social', 'wismec', 'isteck', 'qcy', 'line', 'miraculous', 'stacks'])) {
                     unset($titleArr[$k1]);
                     continue;
                 }
