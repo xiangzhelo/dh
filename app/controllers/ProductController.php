@@ -1405,6 +1405,19 @@ class ProductController extends ControllerBase {
         }
     }
 
+    public function delProductsAction() {
+        $ids = $this->request->get('ids');
+        if (empty($ids)) {
+            $this->echoJson(['status' => 'error', 'msg' => '删除产品数为空']);
+        }
+        $ret = $this->db->execute('delete from product where id in (' . implode(',', $ids) . ')');
+        if ($ret == true) {
+            $this->echoJson(['status' => 'success', 'msg' => '删除成功']);
+        } else {
+            $this->echoJson(['status' => 'error', 'msg' => '删除失败']);
+        }
+    }
+
     public $errorSkus = [
         'productattr' => [
             'name' => "产品属性",

@@ -29,6 +29,7 @@
     <?php } else { ?>
         <button class="ui primary button" style="margin-top:10px;" onclick="refreshProducts();">批量刷新</button>
     <?php } ?>
+    <button class="ui primary button" style="margin-top:10px;" onclick="delProducts();">批量删除</button>
     <table class="ui celled striped table">
         <thead><tr><th style="text-align: center;width: 60px;"><a href="javascript:;" onclick="quanxuan();">全选</a></th><th style="text-align: center;width: 60px;">ID</th><th style="text-align: center;width: 100px;">创建时间</th><th style="text-align: center;">图片</th><th style="text-align: center;">标题</th><th style="text-align: center;width: 100px;">账号</th><th style="text-align: center;width: 180px;">状态</th></tr></thead>
         <tbody>
@@ -45,7 +46,7 @@
                     $opt .= '<br /><button class="ui primary button draft_btn" onclick="sub_draft(' . $item['id'] . ',\'1\');">提交产品</button>';
                 }
                 echo '<tr aid="' . $item['id'] . '">
-                    <td>' . ($item['status'] === '1' || $status == '4' || $status == '400,402' || $status == '0' ? '<input type="checkbox" class="ids" value="' . $item['id'] . '">' : '') . '</td>
+                    <td>' . ($item['status'] === '1' || $item['status'] === '200' || $status == '4' || $status == '400,402' || $status == '0' ? '<input type="checkbox" class="ids" value="' . $item['id'] . '">' : '') . '</td>
                     <td style="text-align: center;"><a href="/collection/data?id=' . $item['id'] . '" target="_blank">' . $item['id'] . '<br />查看</a></td>
                     <td style="text-align: center;">' . date('m-d H:i', strtotime($item['createtime'])) . '</td> 
                     <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank"><img src="' . $item['source_img'] . '" style="height:60px;margin:3px 10px;"/></a></td> 
@@ -228,6 +229,29 @@
             success: function (json) {
                 alert(json['msg']);
                 $('.ids').prop('checked', false);
+            }
+        });
+    }
+
+    function delProducts() {
+        var ids = [];
+        $('.ids:checked').each(function () {
+            var id = $(this).val();
+            ids.push(id);
+        });
+        $.ajax({
+            url: '/product/delProducts',
+            type: 'POST',
+            dataType: 'json',
+            data: {ids: ids},
+            success: function (json) {
+                alert(json['msg']);
+                $('.ids').prop('checked', false);
+                if (json['status'] == 'success') {
+                    $.each(ids, function (k, id) {
+                        $('tr[aid=' + id + ']').find('.opt_td').html('<span style="color:red;">删除成功</span>');
+                    });
+                }
             }
         });
     }
