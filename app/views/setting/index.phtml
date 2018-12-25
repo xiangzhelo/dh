@@ -68,6 +68,9 @@
         </div>
     </div>
     <div style="color:red;margin: 5px;">还有<span id="queueTotalNum" style="margin: 3px;"></span>条队列<span id="queueList"></span></div>
+
+    <div class="ui divider"></div>
+    <div><a class="ui primary button" href='/setting/clear?date=<?= date('Y-m-d', strtotime('-1 months')) ?>' target='_blank'>清理一个月以前的商品和图片</a></div>
     <script>
         $(function () {
 //            $('#time,#queueNum,#priceFormula,#users').change(function () {

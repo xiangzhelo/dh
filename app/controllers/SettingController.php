@@ -260,6 +260,37 @@ class SettingController extends ControllerBase {
         $this->echoJson(['status' => 'success', 'msg' => '队列数', 'data' => $count, 'list' => $countList]);
     }
 
+    public function clearAction() {
+        set_time_limit(0);
+        $date = $this->request->get('date', 'string');
+        $num = 0;
+        $num1 = 0;
+        $list = \Product::find([
+                    'conditions' => 'createtime<=:date:',
+                    'bind' => [
+                        'date' => $date
+                    ]
+        ]);
+        foreach ($list as $item) {
+            unlink(PUL_PATH . 'desc/' . $item->source_product_id . '.html');
+            $item->delete();
+            $num++;
+        }
+        $imgList = \Imgs::find([
+                    'conditions' => 'createtime<=:date:',
+                    'bind' => [
+                        'date' => $date
+                    ]
+        ]);
+        foreach ($imgList as $item) {
+            unlink($item->path);
+            $item->delete();
+            $num1++;
+        }
+        echo '总共删除：' . $num . '件商品，共删除：' . $num1 . '张图片';
+        exit();
+    }
+
     public function t1Action() {
         $curl = new \Lib\Vendor\MyCurl();
 //        $url = 'https://game.weixin.qq.com/cgi-bin/gamewap/getusermobagameindex?offset=0&limit=10&openid=owanlsq4H4TQTI7xibhcRTt-u1BY&uin=&key=&pass_ticket=L%2FulwR7h5hVsZ3EoVT8nhldtkFy0AIvPrKi%2FVluzPWSHcneSULlfQk8GFyexoNVn&QB&';  //用户信息
