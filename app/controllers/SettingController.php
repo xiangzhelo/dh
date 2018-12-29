@@ -249,6 +249,7 @@ class SettingController extends ControllerBase {
     }
 
     public function getQueueCountAction() {
+        set_time_limit(0);
         $count = \Queue::count([
                     'conditions' => 'status in (0,1,400,401)'
         ]);
@@ -257,6 +258,7 @@ class SettingController extends ControllerBase {
                     'group' => 'contents',
                     'columns' => 'contents,count(id) as num'
                 ])->toArray();
+        $this->db->execute('delete from log where createtime>"' . date('Y-m-d H:i:s', strtotime('-7 days')) . '";delete from need_words where status=200 and createtime>"' . date('Y-m-d H:i:s', strtotime('-7 days')) . '";');
         $this->echoJson(['status' => 'success', 'msg' => '队列数', 'data' => $count, 'list' => $countList]);
     }
 
