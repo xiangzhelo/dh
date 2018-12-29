@@ -52,7 +52,7 @@ class SettingController extends ControllerBase {
             }
             if ($json['run'] == 1) {
                 $log = \Log::findFirst(['order' => 'id desc']);
-                if (time() - strtotime($log->createtime) > 60 && time() - strtotime($log->createtime) > $json['time'] * 2) {
+                if (!$log||(time() - strtotime($log->createtime) > 60 && time() - strtotime($log->createtime) > $json['time'] * 2)) {
                     $json['run'] = 0;
                 }
             }
@@ -258,7 +258,7 @@ class SettingController extends ControllerBase {
                     'group' => 'contents',
                     'columns' => 'contents,count(id) as num'
                 ])->toArray();
-        $this->db->execute('delete from log where createtime>"' . date('Y-m-d H:i:s', strtotime('-7 days')) . '";delete from need_words where status=200 and createtime>"' . date('Y-m-d H:i:s', strtotime('-7 days')) . '";');
+        $this->db->execute('delete from log where createtime<"' . date('Y-m-d H:i:s', strtotime('-7 days')) . '";delete from need_words where status=200 and createtime<"' . date('Y-m-d H:i:s', strtotime('-7 days')) . '";');
         $this->echoJson(['status' => 'success', 'msg' => '队列数', 'data' => $count, 'list' => $countList]);
     }
 
