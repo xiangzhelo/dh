@@ -186,6 +186,9 @@ class CollectionController extends ControllerBase {
         $msg = '';
         $curl = new \Lib\Vendor\Curl();
         $output = $curl->get($url, ['X-FORWARDED-FOR:' . CommonFun::Rand_IP(), 'CLIENT-IP:' . CommonFun::Rand_IP()]);
+        if (empty($output)) {
+            $output = file_get_contents($url);
+        }
         if ($output == false) {
             return '失败';
         }
