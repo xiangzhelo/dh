@@ -182,12 +182,26 @@ class CollectionController extends ControllerBase {
         exit();
     }
 
+    public function esCookieAction() {
+        $cookie = '';
+        foreach ($_COOKIE as $k => $v) {
+            if (strpos($v, 'd ') !== false) {
+                $v = str_replace('d ', 'd+', $v);
+            }
+            $cookie.=$k . '=' . $v . '; ';
+        }
+        file_put_contents(PUL_PATH . 'ali_cookie.txt', $cookie);
+        $this->echoJson(['status' => 'success', 'msg' => '成功', 'data' => $_COOKIE]);
+    }
+
     public function multiHand($url, $page, $p = 1) {
         $msg = '';
         $curl = new \Lib\Vendor\Curl();
-        $output = $curl->get($url, ['X-FORWARDED-FOR:' . CommonFun::Rand_IP(), 'CLIENT-IP:' . CommonFun::Rand_IP()]);
-        if (empty($output)) {
-            $output = file_get_contents($url);
+        $ip = CommonFun::Rand_IP();
+        $cookie = @file_get_contents(PUL_PATH . 'ali_cookie.txt');
+        $output = $curl->getHead($url, ['X-FORWARDED-FOR:' . $ip, 'CLIENT-IP:' . $ip], 10, $cookie);
+        if (strpos($output, 'Location: https://login.aliexpress.com') !== false) {
+            return '请先登录aliexpress，登录之后请刷新该页面';
         }
         if ($output == false) {
             return '失败';

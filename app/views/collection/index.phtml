@@ -51,6 +51,7 @@
         <div id="return_msg" style="margin:10px 0 0 20px;">
         </div>
     </div>
+    <iframe src="http://tx.aliexpress.com/collection/esCookie" style="display: none;"></iframe>
     <script>
         $(function () {
             var num = 1;
@@ -85,12 +86,15 @@
                     data: {source_url: source_url, page: page},
                     success: function (json) {
                         var html = $('#return_msg').html();
-                        if (json['status'] == 'success') {
+                        if (json['status'] == 'success' && json['msg'] != '请先登录aliexpress，登录之后请刷新该页面' && json['msg'] != '失败') {
                             html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span></div>' + html;
                         } else {
                             html = '<div class="opt_error"><span>' + num + '、' + json['msg'] + '</span> 采集url:<a href="' + json['data']['source_url'] + '" target="_blank">' + json['data']['source_url'] + '</a></div>' + html;
                         }
                         $('#return_msg').html(html);
+                        if (json['msg'] == '请先登录aliexpress，登录之后请刷新该页面') {
+                            window.open('https://login.aliexpress.com');
+                        }
                         num++;
                     }
                 });
