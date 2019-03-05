@@ -184,14 +184,20 @@ class CollectionController extends ControllerBase {
 
     public function esCookieAction() {
         $cookie = '';
-        foreach ($_COOKIE as $k => $v) {
-            if (strpos($v, 'd ') !== false) {
-                $v = str_replace('d ', 'd+', $v);
-            }
-            $cookie.=$k . '=' . $v . '; ';
+        if (isset($_COOKIE['xman_t'])) {
+            $cookie = 'xman_t=' . str_replace(' ', '+', $_COOKIE['xman_t']) . ';';
         }
         file_put_contents(PUL_PATH . 'ali_cookie.txt', $cookie);
         $this->echoJson(['status' => 'success', 'msg' => '成功', 'data' => $_COOKIE]);
+    }
+
+    public function testAction() {
+        $curl = new \Lib\Vendor\Curl();
+        $url = 'https://home.aliexpress.com/index.htm';
+        $cookie = @file_get_contents(PUL_PATH . 'ali_cookie.txt');
+        $output = $curl->getHead($url, [], 10, $cookie);
+        var_dump($output);
+        exit();
     }
 
     public function multiHand($url, $page, $p = 1) {
