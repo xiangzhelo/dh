@@ -205,7 +205,7 @@ class CollectionController extends ControllerBase {
             return $_COOKIE['AUTH_PROXY_IP'];
         }
         $curl = new \Lib\Vendor\Curl();
-        $jsonStr = $curl->get('http://api.wandoudl.com/api/ip?app_key=6c360b610115b41f5935771d96a6df63&pack=0&num=1&xy=1&type=2&lb=\r\n&mr=1');
+        $jsonStr = $curl->get('http://api.wandoudl.com/api/ip?app_key=bf469f3d992360983d96acfe4a00a257&pack=0&num=1&xy=1&type=2&lb=\r\n&mr=1');
         $json = json_decode($jsonStr, true);
         setcookie('AUTH_PROXY_IP', $json['data'][0]['ip'] . ':' . $json['data'][0]['port'], strtotime($json['data'][0]['expire_time']));
         return $json['data'][0]['ip'] . ':' . $json['data'][0]['port'];
@@ -214,8 +214,8 @@ class CollectionController extends ControllerBase {
     private function getContent($url, $proxy_ip) {
         $cookie = @file_get_contents(PUL_PATH . 'ali_cookie.txt');
         $curl = new \Lib\Vendor\Curl();
-        $username = "949460716@qq.com"; // 您的用户名
-        $password = "123qweQWE"; // 您的密码
+        $username = "963205006@qq.com"; // 您的用户名邮箱963205006@qq.com 密码Lk123456
+        $password = "Lk123456"; // 您的密码
         $basic = base64_encode($username . ":" . $password);
         $output = $curl->getHead($url, ["Proxy-Authorization: Basic " . $basic], 60, $cookie, $proxy_ip);
         if (strpos($output, 'Location: https://login.aliexpress.com') !== false) {
