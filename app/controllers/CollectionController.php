@@ -200,18 +200,45 @@ class CollectionController extends ControllerBase {
         exit();
     }
 
-    public function multiHand($url, $page, $p = 1) {
-        $msg = '';
+    private function getProxyIp($fresh = false) {
+        if (!$fresh && isset($_COOKIE['AUTH_PROXY_IP'])) {
+            return $_COOKIE['AUTH_PROXY_IP'];
+        }
         $curl = new \Lib\Vendor\Curl();
-        $ip = CommonFun::Rand_IP();
+        $jsonStr = $curl->get('http://api.wandoudl.com/api/ip?app_key=6c360b610115b41f5935771d96a6df63&pack=0&num=1&xy=1&type=2&lb=\r\n&mr=1');
+        $json = json_decode($jsonStr, true);
+        setcookie('AUTH_PROXY_IP', $json['data'][0]['ip'] . ':' . $json['data'][0]['port'], strtotime($json['data'][0]['expire_time']));
+        return $json['data'][0]['ip'] . ':' . $json['data'][0]['port'];
+    }
+
+    private function getContent($url, $proxy_ip) {
         $cookie = @file_get_contents(PUL_PATH . 'ali_cookie.txt');
-        $output = $curl->getHead($url, ['X-FORWARDED-FOR:' . $ip, 'CLIENT-IP:' . $ip], 10, $cookie);
+        $curl = new \Lib\Vendor\Curl();
+        $username = "949460716@qq.com"; // 您的用户名
+        $password = "123qweQWE"; // 您的密码
+        $basic = base64_encode($username . ":" . $password);
+        $output = $curl->getHead($url, ["Proxy-Authorization: Basic " . $basic], 60, $cookie, $proxy_ip);
         if (strpos($output, 'Location: https://login.aliexpress.com') !== false) {
-            return '请先登录aliexpress，登录之后请刷新该页面';
+            return ['status' => 'error', 'msg' => '请先登录aliexpress，登录之后请刷新该页面'];
         }
         if ($output == false) {
-            return '失败';
+            return ['status' => 'error', 'msg' => '失败'];
         }
+        return ['status' => 'success', 'msg' => '', 'data' => $output];
+    }
+
+    public function multiHand($url, $page, $p = 1) {
+        $msg = '';
+        $proxy_ip = $this->getProxyIp();
+        $ret = $this->getContent($url, $proxy_ip);
+        if ($ret['status'] == 'error') {
+            $proxy_ip = $this->getProxyIp(true);
+            $ret = $this->getContent($url, $proxy_ip);
+            if ($ret['status'] == 'error') {
+                return $ret['msg'];
+            }
+        }
+        $output = $ret['data'];
         $dom = new \Lib\Vendor\HtmlDom();
         $html = $dom->load($output);
         $num = 0;
@@ -264,6 +291,37 @@ class CollectionController extends ControllerBase {
     public function t2Action() {
         $key = preg_replace('/(\s+)(\d+)$/', '', 'feature 1');
         var_dump($key);
+        exit();
+    }
+
+    public function t3Action() {
+        $usernaem = "949460716@qq.com"; // 您的用户名
+        $password = "123qweQWE"; // 您的密码
+        $proxy_ip = "112.114.89.162"; // 代理ip，通过http://h.wandouip.com/get获得
+        $proxy_port = "36410"; // 代理端口号
+// 用户名密码base64加密
+        $basic = base64_encode($usernaem . ":" . $password);
+
+        $header = [
+            "Proxy-Authorization: Basic " . $basic
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, "https://www.aliexpress.com/wholesale?site=glo&g=y&SortType=total_tranpro_desc&SearchText=men+t+shirt&groupsort=1&page=6&initiative_id=SB_20190312235825&needQuery=n&minPrice=6");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_PROXYAUTH, CURLAUTH_BASIC); //代理认证模式  
+        curl_setopt($ch, CURLOPT_PROXY, $proxy_ip); //代理服务器地址   
+        curl_setopt($ch, CURLOPT_PROXYPORT, $proxy_port); //代理服务器端口
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE); // https请求 不验证证书和hosts 
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $header); // 设置请求头
+        $output = curl_exec($ch);
+        if ($output === FALSE) {
+            echo "CURL Error:" . curl_error($ch);
+        } else {
+            echo $output;
+        }
+        curl_close($ch);
         exit();
     }
 

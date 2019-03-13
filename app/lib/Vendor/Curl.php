@@ -57,13 +57,18 @@ class Curl {
         return $output;
     }
 
-    public static function getHead($url, $headers = null, $timeout = 5, $cookie = '') {
+    public static function getHead($url, $headers = null, $timeout = 5, $cookie = '', $proxy_ip = '') {
+        $arr = explode(':', $proxy_ip);
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_HEADER, 1);
         curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
         curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (compatible; MSIE 6.0; Windows NT 5.0)");
+        if (count($arr) == 2) {
+            curl_setopt($ch, CURLOPT_PROXY, $arr[0]);
+            curl_setopt($ch, CURLOPT_PROXYPORT, $arr[1]); //代理服务器端口
+        }
         if (!empty($cookie)) {
             curl_setopt($ch, CURLOPT_COOKIE, $cookie);
         }
