@@ -176,8 +176,12 @@ class CollectionController extends ControllerBase {
         set_time_limit(0);
         $url = $this->request->get('source_url', 'string', '');
         $page = $this->request->get('page', 'int', 10);
+        $proxy_ip = '';
+        if (isset($_COOKIE['AUTH_PROXY_IP'])) {
+            $proxy_ip = $_COOKIE['AUTH_PROXY_IP'];
+        }
 //        $url = 'https://www.aliexpress.com/wholesale?catId=0&SearchText=shoes&page=13';
-        $msg = $this->multiHand($url, $page);
+        $msg = $this->multiHand($proxy_ip, $url, $page);
         $this->echoJson(['status' => 'success', 'msg' => $msg, 'data' => ['source_url' => $url]]);
         exit();
     }
@@ -200,15 +204,16 @@ class CollectionController extends ControllerBase {
         exit();
     }
 
-    private function getProxyIp($fresh = false) {
-        if (!$fresh && isset($_COOKIE['AUTH_PROXY_IP'])) {
-            return $_COOKIE['AUTH_PROXY_IP'];
+    private function getProxyIp($proxy_ip, $fresh = false) {
+        if ($fresh || empty($proxy_ip)) {
+            $curl = new \Lib\Vendor\Curl();
+            $jsonStr = $curl->get('http://api.wandoudl.com/api/ip?app_key=bf469f3d992360983d96acfe4a00a257&pack=0&num=1&xy=1&type=2&lb=\r\n&mr=1');
+            $json = json_decode($jsonStr, true);
+            setcookie('AUTH_PROXY_IP', $json['data'][0]['ip'] . ':' . $json['data'][0]['port'], strtotime($json['data'][0]['expire_time']));
+            return $json['data'][0]['ip'] . ':' . $json['data'][0]['port'];
+        } else {
+            return $proxy_ip;
         }
-        $curl = new \Lib\Vendor\Curl();
-        $jsonStr = $curl->get('http://api.wandoudl.com/api/ip?app_key=bf469f3d992360983d96acfe4a00a257&pack=0&num=1&xy=1&type=2&lb=\r\n&mr=1');
-        $json = json_decode($jsonStr, true);
-        setcookie('AUTH_PROXY_IP', $json['data'][0]['ip'] . ':' . $json['data'][0]['port'], strtotime($json['data'][0]['expire_time']));
-        return $json['data'][0]['ip'] . ':' . $json['data'][0]['port'];
     }
 
     private function getContent($url, $proxy_ip) {
@@ -227,12 +232,12 @@ class CollectionController extends ControllerBase {
         return ['status' => 'success', 'msg' => '', 'data' => $output];
     }
 
-    public function multiHand($url, $page, $p = 1) {
+    public function multiHand($proxy_ip, $url, $page, $p = 1) {
         $msg = '';
-        $proxy_ip = $this->getProxyIp();
+        $proxy_ip = $this->getProxyIp($proxy_ip);
         $ret = $this->getContent($url, $proxy_ip);
         if ($ret['status'] == 'error') {
-            $proxy_ip = $this->getProxyIp(true);
+            $proxy_ip = $this->getProxyIp($proxy_ip, true);
             $ret = $this->getContent($url, $proxy_ip);
             if ($ret['status'] == 'error') {
                 return $ret['msg'];
@@ -259,7 +264,7 @@ class CollectionController extends ControllerBase {
         $html->clear();
         $msg.= '第' . $p . '页获取' . $num . '商品； ';
         if ($page > 1 && !empty($nUrl) && $nUrl != false) {
-            $msg.=$this->multiHand($nUrl, --$page, ++$p);
+            $msg.=$this->multiHand($proxy_ip, $nUrl, --$page, ++$p);
         }
         return $msg;
     }
