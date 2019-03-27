@@ -104,6 +104,7 @@ class CommonFun {
                 '折扣' => self::getJsValue($contents, 'window.runParams.discount'),
                 '计量单位' => strtolower($html->find('#oddUnitName_id', 0)->value)
             ];
+            $data['运费'] = self::getFreight($data['产品id']);
             $data['categories'] = [];
             if (!empty($html->find('.ui-breadcrumb a'))) {
                 foreach ($html->find('.ui-breadcrumb a') as $a) {
@@ -210,7 +211,7 @@ class CommonFun {
                 $attribute[$num]['尺寸'] = isset($arr[$postion['height']]) && isset($height[$arr[$postion['height']]]) ? trim($height[$arr[$postion['height']]], ' ') : '';
                 $attribute[$num]['可用量'] = $info['skuVal']['availQuantity'];
                 $attribute[$num]['库存'] = $info['skuVal']['inventory'];
-                $attribute[$num]['折扣价'] = isset($info['skuVal']['actSkuCalPrice']) ? $info['skuVal']['actSkuCalPrice'] : $info['skuVal']['skuCalPrice'];
+                $attribute[$num]['折扣价'] = isset($info['skuVal']['actSkuCalPrice']) ? sprintf("%.2f", $info['skuVal']['actSkuCalPrice'] + $data['运费']) : sprintf("%.2f", $info['skuVal']['skuCalPrice'] + $data['运费']);
                 $attribute[$num]['原价'] = $info['skuVal']['skuCalPrice'];
                 $attribute[$num]['材质'] = isset($arr[$postion['material']]) && isset($material[$arr[$postion['material']]]) ? trim($material[$arr[$postion['material']]], ' ') : '';
                 $attribute[$num]['长度'] = isset($arr[$postion['length']]) && isset($length[$arr[$postion['length']]]) ? trim($length[$arr[$postion['length']]], ' ') : '';
@@ -271,6 +272,20 @@ class CommonFun {
             $data = self::crossArr($data, $arr2);
         }
         return $data;
+    }
+
+    public static function getFreight($productId) {
+        $url = 'https://freight.aliexpress.com/ajaxFreightCalculateService.htm?productid=' . $productId . '&currencyCode=USD&transactionCurrencyCode=USD&sendGoodsCountry=&country=US&province=&city=&lang=en';
+        $curl = new Curl();
+        $jsonStr = $curl->get($url);
+        $jsonStr = str_replace('(', '', $jsonStr);
+        $jsonStr = str_replace(')', '', $jsonStr);
+        $json = json_decode($jsonStr, true);
+        if (isset($json['freight'][0]['localPrice'])) {
+            return $json['freight'][0]['localPrice'];
+        } else {
+            return 0;
+        }
     }
 
 }
