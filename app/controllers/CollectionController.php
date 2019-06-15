@@ -12,7 +12,7 @@ class CollectionController extends ControllerBase {
     }
 
     public function indexAction() {
-        
+
     }
 
     public function handAction() {
@@ -188,8 +188,15 @@ class CollectionController extends ControllerBase {
 
     public function esCookieAction() {
         $cookie = '';
-        if (isset($_COOKIE['xman_t'])) {
-            $cookie = 'xman_t=' . str_replace(' ', '+', $_COOKIE['xman_t']) . ';';
+        foreach ($_COOKIE as $k => $v) {
+            if (strpos($k, 'xman') !== false) {
+                $cookie .= ' ' . $k . '=' . str_replace(' ', '+', $v) . ';';
+            } else {
+                if ($k == 'aep_history') {
+                    $v = urlencode($v);
+                }
+                $cookie .= ' ' . $k . '=' . $v . ';';
+            }
         }
         file_put_contents(PUL_PATH . 'ali_cookie.txt', $cookie);
         $this->echoJson(['status' => 'success', 'msg' => '成功', 'data' => $_COOKIE]);
@@ -262,9 +269,9 @@ class CollectionController extends ControllerBase {
             $nUrl = 'https:' . str_replace('&amp;', '&', $html->find('.page-next,.ui-pagination-next', 0)->href);
         }
         $html->clear();
-        $msg.= '第' . $p . '页获取' . $num . '商品； ';
+        $msg .= '第' . $p . '页获取' . $num . '商品； ';
         if ($page > 1 && !empty($nUrl) && $nUrl != false) {
-            $msg.=$this->multiHand($proxy_ip, $nUrl, --$page, ++$p);
+            $msg .= $this->multiHand($proxy_ip, $nUrl, --$page, ++$p);
         }
         return $msg;
     }
