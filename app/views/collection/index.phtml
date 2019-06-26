@@ -105,7 +105,8 @@
                             window.open('https://login.aliexpress.com');
                         }
                         if (json['msg'].search('请先打开aliexpress产品搜索') != -1) {
-                            window.open('https://www.aliexpress.com/wholesale?catId=0&initiative_id=SB_20190626075902&SearchText=shoes&sleep_verify=1');
+                            location.href='https://www.aliexpress.com/wholesale?catId=0&initiative_id=SB_20190626075902&SearchText=shoes';
+//                            window.open('https://www.aliexpress.com/wholesale?catId=0&initiative_id=SB_20190626075902&SearchText=shoes&sleep_verify=1');
                             alert(json['msg']);
                         }
                         num++;
