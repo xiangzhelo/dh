@@ -204,7 +204,11 @@ class CollectionController extends ControllerBase {
     }
 
     public function esCookie() {
-        return shell_exec('C:\Users\Administrator\AppData\Local\Programs\Python\Python37\python.exe 1.py');
+        if (strpos($_SERVER['PATH'], '\Users\94946')) {
+            return shell_exec('python 2.py');
+        } else {
+            return shell_exec('C:\Users\Administrator\AppData\Local\Programs\Python\Python37\python.exe 1.py');
+        }
     }
 
     public function testAction() {
