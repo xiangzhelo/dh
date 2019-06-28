@@ -12,7 +12,7 @@ class CollectionController extends ControllerBase {
     }
 
     public function indexAction() {
-
+        
     }
 
     public function handAction() {
@@ -187,19 +187,24 @@ class CollectionController extends ControllerBase {
     }
 
     public function esCookieAction() {
-        $cookie = '';
-        foreach ($_COOKIE as $k => $v) {
-            if (strpos($k, 'xman') !== false) {
-                $cookie .= ' ' . $k . '=' . str_replace(' ', '+', $v) . ';';
-            } else {
-                if ($k == 'aep_history') {
-                    $v = urlencode($v);
-                }
-                $cookie .= ' ' . $k . '=' . $v . ';';
-            }
-        }
+//        $cookie = '';
+//        foreach ($_COOKIE as $k => $v) {
+//            if (strpos($k, 'xman') !== false) {
+//                $cookie .= ' ' . $k . '=' . str_replace(' ', '+', $v) . ';';
+//            } else {
+//                if ($k == 'aep_history') {
+//                    $v = urlencode($v);
+//                }
+//                $cookie .= ' ' . $k . '=' . $v . ';';
+//            }
+//        }
+        $cookie = shell_exec('python 1.py');
         file_put_contents(PUL_PATH . 'ali_cookie.txt', $cookie);
         $this->echoJson(['status' => 'success', 'msg' => '成功', 'data' => $_COOKIE]);
+    }
+
+    public function esCookie() {
+        return shell_exec('python 1.py');
     }
 
     public function testAction() {
@@ -224,12 +229,15 @@ class CollectionController extends ControllerBase {
     }
 
     private function getContent($url, $proxy_ip) {
-        $cookie = @file_get_contents(PUL_PATH . 'ali_cookie.txt');
+        $cookie = $this->esCookie(); //@file_get_contents(PUL_PATH . 'ali_cookie.txt');
         $curl = new \Lib\Vendor\Curl();
         $username = "963205006@qq.com"; // 您的用户名邮箱963205006@qq.com 密码Lk123456
         $password = "Lk123456"; // 您的密码
         $basic = base64_encode($username . ":" . $password);
         $output = $curl->getHead($url, ["Proxy-Authorization: Basic " . $basic], 60, $cookie, $proxy_ip);
+        if (strpos($output, 'Please slide to verify') !== false) {
+            return ['status' => 'error', 'msg' => '请先打开aliexpress产品搜索，验证之后请刷新该页面同时1分钟后再开始采集'];
+        }
         if (strpos($output, 'Location: https://login.aliexpress.com') !== false) {
             return ['status' => 'error', 'msg' => '请先登录aliexpress，登录之后请刷新该页面'];
         }

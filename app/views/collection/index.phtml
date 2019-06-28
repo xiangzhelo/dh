@@ -51,8 +51,9 @@
         <div id="return_msg" style="margin:10px 0 0 20px;">
         </div>
     </div>
-    <iframe src="http://test.aliexpress.com/collection/esCookie" style="display: none;"></iframe>
+    <iframe src="https://www.aliexpress.com" style="display: none;"></iframe>
     <script>
+        var url_list = [];
         $(function () {
             var num = 1;
             $('#sub_btn').click(function () {
@@ -78,15 +79,23 @@
             $('#sub_btn1').click(function () {
                 var source_url = $('#source_url1').val();
                 var page = $('#page').val();
+                if (url_list.indexOf(source_url) > -1) {
+                    if (confirm('该地址已采集过，确定重新采集') == false) {
+                        return false;
+                    }
+                }
+                url_list.push(source_url);
                 $.ajax({
                     url: '/collection/multiHand',
                     type: 'POST',
                     dataType: 'json',
-                    async: false,
+                    async: true,
                     data: {source_url: source_url, page: page},
                     success: function (json) {
                         var html = $('#return_msg').html();
                         if (json['status'] == 'success' && json['msg'].search('请先登录aliexpress，登录之后请刷新该页面') == -1 && json['msg'].search('失败') == -1) {
+                            html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span></div>' + html;
+                        } else if (json['status'] == 'success' && json['msg'].search('请先打开aliexpress产品搜索') == -1 && json['msg'].search('失败') == -1) {
                             html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span></div>' + html;
                         } else {
                             html = '<div class="opt_error"><span>' + num + '、' + json['msg'] + '</span> 采集url:<a href="' + json['data']['source_url'] + '" target="_blank">' + json['data']['source_url'] + '</a></div>' + html;
@@ -94,6 +103,11 @@
                         $('#return_msg').html(html);
                         if (json['msg'].search('请先登录aliexpress，登录之后请刷新该页面') != -1) {
                             window.open('https://login.aliexpress.com');
+                        }
+                        if (json['msg'].search('请先打开aliexpress产品搜索') != -1) {
+                            location.href='https://www.aliexpress.com/wholesale?catId=0&initiative_id=SB_20190626075902&SearchText=shoes';
+//                            window.open('https://www.aliexpress.com/wholesale?catId=0&initiative_id=SB_20190626075902&SearchText=shoes&sleep_verify=1');
+                            alert(json['msg']);
                         }
                         num++;
                     }
