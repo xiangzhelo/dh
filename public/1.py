@@ -3,7 +3,7 @@ import sqlite3
 import requests
 from win32crypt import CryptUnprotectData
 
-path1 = r"C:\Users\Administrator\AppData\Local\Google\Chrome\User Data\Default"
+path1 = r"C:\Users\Administrator\AppData\Local\Google\Chrome\User Data\Default\Cookies"
 sql = "select * from cookies where host_key like '%.aliexpress.com'"
 conn = sqlite3.connect(path1)
 conn.row_factory = sqlite3.Row
