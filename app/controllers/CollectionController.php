@@ -204,7 +204,7 @@ class CollectionController extends ControllerBase {
     }
 
     public function esCookie() {
-        return shell_exec('python 1.py');
+        return shell_exec('C:\Users\Administrator\AppData\Local\Programs\Python\Python37\python.exe 1.py');
     }
 
     public function testAction() {
@@ -239,7 +239,7 @@ class CollectionController extends ControllerBase {
             return ['status' => 'error', 'msg' => '请先打开aliexpress产品搜索，验证之后请刷新该页面同时1分钟后再开始采集'];
         }
         if (strpos($output, 'Location: https://login.aliexpress.com') !== false) {
-            return ['status' => 'error', 'msg' => '请先登录aliexpress，登录之后请刷新该页面'];
+            return ['status' => 'error', 'msg' => '请先登录aliexpress，登录之后请刷新该页面同时1分钟后再开始采集'];
         }
         if ($output == false) {
             return ['status' => 'error', 'msg' => '失败'];

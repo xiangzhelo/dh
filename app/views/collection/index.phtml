@@ -93,7 +93,7 @@
                     data: {source_url: source_url, page: page},
                     success: function (json) {
                         var html = $('#return_msg').html();
-                        if (json['status'] == 'success' && json['msg'].search('请先登录aliexpress，登录之后请刷新该页面') == -1 && json['msg'].search('失败') == -1) {
+                        if (json['status'] == 'success' && json['msg'].search('请先登录aliexpress') == -1 && json['msg'].search('失败') == -1) {
                             html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span></div>' + html;
                         } else if (json['status'] == 'success' && json['msg'].search('请先打开aliexpress产品搜索') == -1 && json['msg'].search('失败') == -1) {
                             html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span></div>' + html;
@@ -101,8 +101,9 @@
                             html = '<div class="opt_error"><span>' + num + '、' + json['msg'] + '</span> 采集url:<a href="' + json['data']['source_url'] + '" target="_blank">' + json['data']['source_url'] + '</a></div>' + html;
                         }
                         $('#return_msg').html(html);
-                        if (json['msg'].search('请先登录aliexpress，登录之后请刷新该页面') != -1) {
-                            window.open('https://login.aliexpress.com');
+                        if (json['msg'].search('请先登录aliexpress') != -1) {
+                            location.href='https://login.aliexpress.com';
+                            alert(json['msg']);
                         }
                         if (json['msg'].search('请先打开aliexpress产品搜索') != -1) {
                             location.href='https://www.aliexpress.com/wholesale?catId=0&initiative_id=SB_20190626075902&SearchText=shoes';
