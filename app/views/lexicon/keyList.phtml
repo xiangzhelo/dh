@@ -1,0 +1,124 @@
+<style>
+    .draft_btn{
+        margin-left: 10px !important;
+        margin-top: 5px !important;
+        font-size: 12px !important;
+    }
+    .ids{
+        width: 20px;
+    }
+    .opt_td{
+        font-size: 12px !important;
+    }
+</style>
+<div  class="ui container segment">
+    <div class="ui grid">
+        <div class="six wide column">
+            <span>英文Key : </span>
+            <div class="ui input focus">
+                <input type="text" placeholder="英文" id="key" autocomplete="off" value="">
+            </div>
+        </div>
+        <div class="six wide column">
+            <span>中文Key : </span>
+            <div class="ui input focus">
+                <input type="text" placeholder="中文" id="keycn" autocomplete="off" value="">
+            </div>
+        </div>
+        <div class="four wide column">
+            <button class="ui primary button" onclick="addKey();">添 加</button>
+        </div>
+    </div>
+    <table class="ui celled striped table">
+        <thead><tr><th style="text-align: center;">英文Key</th><th style="text-align: center;">中文Key</th><th style="text-align: center;">创建时间</th><th style="text-align: center;">操作</th></thead>
+        <tbody>
+            <?php
+            foreach ($pages->items as $item) {
+                echo '<tr>
+                        <td style="text-align: center;">' . $item['key'] . '</td>
+                        <td style="text-align: center;">' . $item['keycn'] . '</td>
+                        <td style="text-align: center;">' . $item['ctime'] . '</td>
+                            <td style="text-align: center;"><button class="ui primary button" onclick="del_key(\'' . $item['key'] . '\',\'' . $item['keycn'] . '\');">删除</button></td>
+                        </tr>';
+            }
+            ?>
+        </tbody>
+    </table>
+
+    <div class="ui basic buttons">
+        <span class="ui button"><?php echo "共 ", $pages->all_num, " 条记录 ", $pages->current, " / ", $pages->total_pages, " 页"; ?></span>
+        <?php
+        $base_url = preg_replace('/\&page=\d+/', '', $_SERVER['REQUEST_URI']);
+        $first = "<a class='ui button' href='{$base_url}'>首页</a> ";
+        $last = "<a class='ui button' href='{$base_url}&page={$pages->last}'>尾页</a> ";
+        $prev_disable_class = $pages->current <= 1 ? 'disabled' : '';
+        $prev = "<a class='ui button {$prev_disable_class}' href='{$base_url}&page={$pages->before}'>上一页</a> ";
+        $next_disable_class = $pages->current >= $pages->total_pages ? 'disabled' : '';
+        $next = "<a class='ui button {$next_disable_class}' href='{$base_url}&page={$pages->next}'>下一页</a> ";
+        $list_pages = '';
+        //每边显示inum个页码
+        $inum = 3;
+        if ($pages->current - $inum > 1)
+            $list_pages.=" <a class='ui button disabled'>...</a> ";
+        //左边的页码  
+        for ($i = $inum; $i >= 1; $i--) {
+            $p = $pages->current - $i;
+            if ($p < 1) {
+                continue;
+            } else {
+                $list_pages.=" <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
+            }
+        }
+
+        //当前页码  
+        $list_pages.=" <a class='ui button active' href='{$base_url}&page={$pages->current}'>{$pages->current}</a>";
+        //右边页码  
+        for ($i = 1; $i <= $inum; $i++) {
+            $p = $pages->current + $i;
+            if ($p > $pages->total_pages) {
+                break;
+            } else {
+                $list_pages.=" <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
+            }
+        }
+        if ($pages->current + $inum < $pages->total_pages)
+            $list_pages.=" <a class='ui button disabled'>...</a> ";
+        $pages_str = $first . $prev . $list_pages . $next . $last;
+        if ($pages->total_pages > 1) {
+            echo $pages_str;
+        }
+        ?>
+    </div>
+</div>
+<script>
+    function addKey() {
+        var key = $('#key').val();
+        var keycn = $('#keycn').val();
+        $.ajax({
+            url: '/lexicon/addKey',
+            type: 'GET',
+            async: false,
+            data: {key: key, keycn: keycn},
+            success: function (json) {
+                alert(json['msg']);
+                if (json['status'] == 'success') {
+                    window.location.reload();
+                }
+            }
+        });
+    }
+    function del_key(key, keycn) {
+        $.ajax({
+            url: '/lexicon/delKey',
+            type: 'GET',
+            async: false,
+            data: {key: key, keycn: keycn},
+            success: function (json) {
+                alert(json['msg']);
+                if (json['status'] == 'success') {
+                    window.location.reload();
+                }
+            }
+        });
+    }
+</script>

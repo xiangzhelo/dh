@@ -1,0 +1,326 @@
+<style>
+    .draft_btn{
+        margin-left: 10px !important;
+        margin-top: 5px !important;
+        font-size: 12px !important;
+    }
+    .ids{
+        width: 20px;
+    }
+    .opt_td{
+        font-size: 12px !important;
+    }
+</style>
+<div  class="ui container segment">
+    <div class="field">
+        <div class="ui six item stackable tabs menu" style="width:700px;margin-top: 15px;">
+            <a class="item <?php echo $status === '' ? 'active' : ''; ?>" href="?status=">全部</a>
+            <a class="item <?php echo $status === '0' ? 'active' : ''; ?>" href="?status=0">未配对</a>
+            <a class="item <?php echo $status === '1' ? 'active' : ''; ?>" href="?status=1">匹配成功</a>
+            <a class="item <?php echo $status === '4' ? 'active' : ''; ?>" href="?status=4">等待处理</a>
+            <a class="item <?php echo $status === '400,402' ? 'active' : ''; ?>" href="?status=400,402">失败|放弃</a>
+            <a class="item <?php echo $status === '2' ? 'active' : ''; ?>" href="?status=2">已保存草稿</a>
+            <a class="item <?php echo $status == '200' ? 'active' : ''; ?>" href="?status=200">已上传</a>
+        </div>
+    </div>
+    <?php if ($status != '4' && $status != '400,402' && $status != '0') { ?>
+        <button class="ui primary button" style="margin-top:10px;" onclick="addProducts(0);">批量草稿</button><button class="ui primary button" style="margin-top:10px;" onclick="addProducts(1);">批量添加</button><span id="cateSelect"></span><button class="ui primary button" style="margin-top:10px;" onclick="searchCateSelect();">搜索</button>
+        默认选择分组 ： <select class="groupSelectBox" id="groupid" onchange="setGroup();" style="height: 30px;"></select>
+    <?php } else { ?>
+        <button class="ui primary button" style="margin-top:10px;" onclick="refreshProducts();">批量刷新</button>
+    <?php } ?>
+    <button class="ui primary button" style="margin-top:10px;" onclick="delProducts();">批量删除</button>
+    <table class="ui celled striped table">
+        <thead><tr><th style="text-align: center;width: 60px;"><a href="javascript:;" onclick="quanxuan();">全选</a></th><th style="text-align: center;width: 60px;">ID</th><th style="text-align: center;width: 100px;">创建时间</th><th style="text-align: center;">图片</th><th style="text-align: center;">标题</th><th style="text-align: center;width: 100px;">账号</th><th style="text-align: center;width: 180px;">状态</th></tr></thead>
+        <tbody>
+            <?php
+            foreach ($pages->items as $item) {
+                $opt = '<br /><a href="javascript:;" onclick="refresh_data(\'' . $item['source_product_id'] . '\');">刷新匹配</a> '
+                        . ' <a  href="javascript:;" onclick="recollection_data(\'' . $item['source_url'] . '\');">重新采集</a>';
+                if ($item['status'] == 1) {
+                    if (empty($item['dh_itemcode'])) {
+                        $opt .= '<br /><button class="ui primary button draft_btn" onclick="sub_draft(' . $item['id'] . ',\'\');">保存草稿</button>';
+                    }
+                    $opt .= '<br /><button class="ui primary button draft_btn" onclick="sub_draft(' . $item['id'] . ',\'1\');">提交产品</button>';
+                } elseif ($item['status'] == 2) {
+                    $opt .= '<br /><button class="ui primary button draft_btn" onclick="sub_draft(' . $item['id'] . ',\'1\');">提交产品</button>';
+                }
+                echo '<tr aid="' . $item['id'] . '">
+                    <td>' . ($item['status'] === '1' || $item['status'] === '200' || $status == '4' || $status == '400,402' || $status == '0' ? '<input type="checkbox" class="ids" value="' . $item['id'] . '">' : '') . '</td>
+                    <td style="text-align: center;"><a href="/collection/data?id=' . $item['id'] . '" target="_blank">' . $item['id'] . '<br />查看</a></td>
+                    <td style="text-align: center;">' . date('m-d H:i', strtotime($item['createtime'])) . '</td> 
+                    <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank"><img src="' . $item['source_img'] . '" style="height:60px;margin:3px 10px;"/></a></td> 
+                    <td style="text-align: center;"><a href="' . $item['source_url'] . '" target="_blank">' . $item['source_product_name'] . ($item['status'] == 0 ? '<span style="color:red;font-size:8px;">(' . (empty($item['need_attribute']) ? '分类|属性' : trim($item['need_attribute'], '|')) . '缺失)</span>' : '') . '</a></td> 
+                    <td style="text-align: center;">' . $item['current_user'] . '</td>
+                    <td style="text-align: center;" class="opt_td">'
+                . ($item['status'] == 400 ? '放弃' : '')
+                . ($item['status'] == 402 ? '<span style="color:red;">失败 ' . $item['need_attribute'] . '</span>' : '')
+                . ($item['status'] == 200 ? '<a href="http://seller.dhgate.com/syi/edit.do?pid=' . $item['dh_itemcode'] . '" target="_blank">查看产品</a> <a href="http://www.dhgate.com/product/productdisplay.do?from=product_preview&itemcode=' . $item['dh_itemcode'] . '" target="_blank">预览</a>' : '')
+                . ($item['status'] == 4 ? '等待处理' : '')
+                . ($item['status'] == 2 ? '<a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $item['dh_product_id'] . '&inp_catepubid=' . $item['dh_category_id'] . '&isdraftbox=1" target="_blank">查看草稿</a>' : '')
+                . ($item['status'] == 1 ? ($item['dh_itemcode'] > 0 ? '<a href="http://seller.dhgate.com/syi/edit.do?pid=' . $item['dh_itemcode'] . '" target="_blank">查看产品</a>(已重新匹配) <a href="http://www.dhgate.com/product/productdisplay.do?from=product_preview&itemcode=' . $item['dh_itemcode'] . '" target="_blank">预览</a>' : ($item['dh_product_id'] > 0 ? '<a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' . $item['dh_product_id'] . '&inp_catepubid=' . $item['dh_product_id'] . '&isdraftbox=1" target="_blank">查看草稿</a>(已重新匹配)' : '匹配成功')) : '')
+                . ($item['status'] == 0 ? '未匹配' : '')
+                . $opt . '</td> 
+                </tr>';
+            }
+            ?>
+        </tbody>
+    </table>
+
+    <div class="ui basic buttons">
+        <span class="ui button"><?php echo "共 ", $pages->all_num, " 条记录 ", $pages->current, " / ", $pages->total_pages, " 页"; ?></span>
+        <?php
+        $base_url = preg_replace('/\&page=\d+/', '', $_SERVER['REQUEST_URI']);
+        $first = "<a class='ui button' href='{$base_url}'>首页</a> ";
+        $last = "<a class='ui button' href='{$base_url}&page={$pages->last}'>尾页</a> ";
+        $prev_disable_class = $pages->current <= 1 ? 'disabled' : '';
+        $prev = "<a class='ui button {$prev_disable_class}' href='{$base_url}&page={$pages->before}'>上一页</a> ";
+        $next_disable_class = $pages->current >= $pages->total_pages ? 'disabled' : '';
+        $next = "<a class='ui button {$next_disable_class}' href='{$base_url}&page={$pages->next}'>下一页</a> ";
+        $list_pages = '';
+        //每边显示inum个页码
+        $inum = 3;
+        if ($pages->current - $inum > 1)
+            $list_pages.=" <a class='ui button disabled'>...</a> ";
+        //左边的页码  
+        for ($i = $inum; $i >= 1; $i--) {
+            $p = $pages->current - $i;
+            if ($p < 1) {
+                continue;
+            } else {
+                $list_pages.=" <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
+            }
+        }
+
+        //当前页码  
+        $list_pages.=" <a class='ui button active' href='{$base_url}&page={$pages->current}'>{$pages->current}</a>";
+        //右边页码  
+        for ($i = 1; $i <= $inum; $i++) {
+            $p = $pages->current + $i;
+            if ($p > $pages->total_pages) {
+                break;
+            } else {
+                $list_pages.=" <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
+            }
+        }
+        if ($pages->current + $inum < $pages->total_pages)
+            $list_pages.=" <a class='ui button disabled'>...</a> ";
+        $pages_str = $first . $prev . $list_pages . $next . $last;
+        if ($pages->total_pages > 1) {
+            echo $pages_str;
+        }
+        ?>
+    </div>
+</div>
+<script>
+    $(function () {//groupid
+        getCate(0);
+        $.ajax({
+            url: '/product/getGroup',
+            type: 'GET',
+            dataType: 'json',
+            success: function (json) {
+                if (json['status'] == 'success') {
+                    var html = '<option value="">未分组</option>';
+                    html += getGroup(json['data'], 0);
+                    $('#groupid').html(html);
+                    if ($('#groupid option[value=' + json['productgroupid'] + ']').length > 0) {
+                        $('#groupid').val(json['productgroupid']);
+                    } else {
+                        $('#groupid').val('');
+                        setGroup();
+                    }
+                }
+            }
+        });
+    });
+    function setGroup() {
+        var groupid = $('#groupid').val();
+        $.ajax({
+            url: '/product/setGroup',
+            type: 'GET',
+            dataType: 'json',
+            data: {groupid: groupid},
+            async: false,
+            success: function () {}
+        });
+    }
+
+    function getGroup(arr, dep) {
+        var html = '';
+        $.each(arr, function (k, v) {
+            html += '<option value="' + v['key'] + '">' + (dep > 0 ? (new Array(dep + 1).join('|—— ')) : '') + v['value'] + '</option>';
+            html += getGroup(v['menu'], dep + 1);
+        });
+        return html;
+    }
+    function sub_draft(id, isSave) {
+        var str = isSave == 1 ? '确定提交产品' : '确定保存草稿';
+        if (confirm(str) == false) {
+            return false;
+        }
+        $.ajax({
+            url: '/product/draft',
+            type: 'POST',
+            dataType: 'json',
+            data: {id: id, isSave: isSave},
+            success: function (json) {
+                var _this = $('tr[aid=' + id + '] .opt_td');
+                if (json['status'] == 'success') {
+                    if (json['data']['dh_itemcode'] == '') {
+                        _this.html('<span class="success"><a href="http://seller.dhgate.com/syi/edit.do?prodDraftId=' + json['data']['dh_product_id'] + '&inp_catepubid=' + json['data']['dh_category_id'] + '&isdraftbox=1" target="_blank">查看草稿</a></span>');
+                    } else {
+                        _this.html('<span class="success"><a href="http://seller.dhgate.com/syi/edit.do?pid=' + json['data']['dh_itemcode'] + '&inp_catepubid=' + json['data']['dh_category_id'] + '" target="_blank">查看产品</a></span>');
+                    }
+                } else {
+                    _this.html('<span style="color:red;">保存失败,' + json['msg'] + '</span>');
+                }
+            }
+        });
+    }
+
+    function quanxuan() {
+        $('.ids').prop('checked', true);
+    }
+    function addProducts(isSave) {
+        var ids = [];
+        var content = '添加产品草稿';
+        if (isSave == 1) {
+            content = '添加产品';
+        }
+        var str = isSave == 1 ? '确定批量提交产品' : '确定批量保存草稿';
+        if (confirm(str) == false) {
+            return false;
+        }
+        $('.ids:checked').each(function () {
+            var id = $(this).val();
+            ids.push(id);
+        });
+        $.ajax({
+            url: '/product/addProduct',
+            type: 'POST',
+            dataType: 'json',
+            data: {ids: ids, content: content, isSave: isSave},
+            success: function (json) {
+                if (json['status'] == 'success') {
+                    $('.ids:checked').each(function () {
+                        $(this).parents('tr').find('.opt_td').html('<span class="success">等待处理</span>');
+                        $(this).remove();
+                    });
+                }
+                alert(json['msg']);
+                $('.ids').prop('checked', false);
+            }
+        });
+    }
+
+
+    function refreshProducts() {
+        var ids = [];
+        $('.ids:checked').each(function () {
+            var id = $(this).val();
+            ids.push(id);
+        });
+        $.ajax({
+            url: '/lexicon/addRefreshQueues',
+            type: 'POST',
+            dataType: 'json',
+            data: {ids: ids},
+            success: function (json) {
+                alert(json['msg']);
+                $('.ids').prop('checked', false);
+            }
+        });
+    }
+
+    function delProducts() {
+        var ids = [];
+        $('.ids:checked').each(function () {
+            var id = $(this).val();
+            ids.push(id);
+        });
+        $.ajax({
+            url: '/product/delProducts',
+            type: 'POST',
+            dataType: 'json',
+            data: {ids: ids},
+            success: function (json) {
+                alert(json['msg']);
+                $('.ids').prop('checked', false);
+                if (json['status'] == 'success') {
+                    $.each(ids, function (k, id) {
+                        $('tr[aid=' + id + ']').find('.opt_td').html('<span style="color:red;">删除成功</span>');
+                    });
+                }
+            }
+        });
+    }
+
+    function getCate(catePubId) {
+        $.ajax({
+            url: '/product/getCateAttr',
+            type: 'GET',
+            dataType: 'json',
+            data: {catePubId: catePubId},
+            async: false,
+            success: function (json) {
+                if (json['data'] != null && json['data'] != '' && json['data'].length > 0) {
+                    var html = '<span class="cateSpan selSpan" style="margin-right:5px;"><select class="cateSelectBox" onchange="cateChange($(this));" style="height: 30px;">';
+                    html += '<option value="">请选择</option>';
+                    $.each(json['data'], function (k, v) {
+                        html += '<option value="' + v['catePubId'] + '">' + v['pubNameCn'] + '</option>';
+                    });
+                    html += '</select></span>';
+                    $('#cateSelect').append(html);
+                }
+            }
+        });
+    }
+    function cateChange(_this) {
+        var catePubId = _this.val();
+        removeNext(_this.parent('.cateSpan').next());
+        getCate(catePubId);
+    }
+    function removeNext(_this) {
+        if (_this.length > 0) {
+            if (_this.next().length > 0) {
+                removeNext(_this.next());
+            }
+            _this.remove();
+        }
+    }
+    function searchCateSelect() {
+        var url = '<?php echo preg_replace('/(\&page=\d+)|(\&catePubId=\d+)/', '', $_SERVER['REQUEST_URI']); ?>';
+        var len = $('#cateSelect').find('.cateSelectBox').length;
+        var cateId = $('.cateSelectBox').eq(len - 1).val();
+        if (cateId == '' && len > 1) {
+            cateId = $('.cateSelectBox').eq(len - 2).val();
+        }
+        url += '&catePubId=' + cateId;
+        window.location.href = url;
+    }
+    function refresh_data(source_product_id) {
+        $.ajax({
+            url: '/lexicon/wordsMatch',
+            type: 'GET',
+            dataType: 'json',
+            data: {source_product_id: source_product_id},
+            async: false,
+            success: function (json) {
+                alert(json['msg']);
+            }
+        });
+    }
+    function recollection_data(source_url) {
+        $.ajax({
+            url: '/collection/hand',
+            type: 'GET',
+            dataType: 'json',
+            data: {source_url: source_url},
+            async: false,
+            success: function (json) {
+                alert(json['msg']);
+            }
+        });
+    }
+</script>

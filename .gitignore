@@ -1,5 +1,15 @@
+<<<<<<< HEAD
 /ali/
 /cateArr/
 /cateArrL/
 /desc/
 /catepub_json/
+=======
+app/config/setting.json
+public/ali/
+public/cateArr/
+public/cateArrL/
+public/desc/
+public/img/
+public/ali_cookie.txt
+>>>>>>> 2c5992720da03a2fcb13b43b4ed4be54979d88d4

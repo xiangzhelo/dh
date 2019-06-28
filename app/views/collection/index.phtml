@@ -1,0 +1,119 @@
+<style>
+    .opt_success{
+        border-radius: 5px;
+        background: #76d573;
+        color:#fff;
+        padding: 10px;
+        margin-bottom: 5px;
+    }
+    .opt_success span{
+        margin-right: 10px;
+    }
+    .opt_error{
+        border-radius: 5px;
+        background: #f74d4d;
+        color:#fff;
+        padding: 10px;
+        margin-bottom: 5px;
+    }
+    .opt_error span{
+        margin-right: 10px;
+    }
+    .source_url{
+        margin-top: 10px;
+        width: 900px;
+        height:100px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+    .page{
+        margin-top: 10px;
+        width: 100px;
+        height:40px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+</style>
+<div  class="ui container segment">
+    <div style="float:left; margin: 10px 20px 0 10px;">采集URL : </div><textarea name="source_url" class="source_url" id="source_url"></textarea>
+    <div style="margin:10px 20px;">
+        <button class="ui primary button" id="sub_btn">采&nbsp;&nbsp;集</button>
+    </div>
+
+    <div style="float:left; margin: 10px 20px 0 10px;">采集列表URL : </div><textarea name="source_url1" class="source_url" id="source_url1"></textarea>
+    <br/>
+    <div style="float:left; margin: 10px 20px 0 10px;line-height: 40px;">采集页数 : </div><input id="page" class="page" value="10" />页
+    <div style="margin:10px 20px;">
+        <button class="ui primary button" id="sub_btn1">批量采集</button>
+    </div>
+    <div style="margin:80px 20px 0 20px;">
+        <div>操作信息 :</div>
+        <div id="return_msg" style="margin:10px 0 0 20px;">
+        </div>
+    </div>
+    <iframe src="https://www.aliexpress.com" style="display: none;"></iframe>
+    <script>
+        var url_list = [];
+        $(function () {
+            var num = 1;
+            $('#sub_btn').click(function () {
+                var source_url = $('#source_url').val();
+                $.ajax({
+                    url: '/collection/hand',
+                    type: 'POST',
+                    dataType: 'json',
+                    async: false,
+                    data: {source_url: source_url},
+                    success: function (json) {
+                        var html = $('#return_msg').html();
+                        if (json['status'] == 'success') {
+                            html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span> <a href="/collection/data?id=' + json['data']['item']['id'] + '" target="_blank">查看采集内容>></a></div>' + html;
+                        } else {
+                            html = '<div class="opt_error"><span>' + num + '、' + json['msg'] + '</span> 采集url:<a href="' + json['data']['source_url'] + '" target="_blank">' + json['data']['source_url'] + '</a></div>' + html;
+                        }
+                        $('#return_msg').html(html);
+                        num++;
+                    }
+                });
+            });
+            $('#sub_btn1').click(function () {
+                var source_url = $('#source_url1').val();
+                var page = $('#page').val();
+                if (url_list.indexOf(source_url) > -1) {
+                    if (confirm('该地址已采集过，确定重新采集') == false) {
+                        return false;
+                    }
+                }
+                url_list.push(source_url);
+                $.ajax({
+                    url: '/collection/multiHand',
+                    type: 'POST',
+                    dataType: 'json',
+                    async: true,
+                    data: {source_url: source_url, page: page},
+                    success: function (json) {
+                        var html = $('#return_msg').html();
+                        if (json['status'] == 'success' && json['msg'].search('请先登录aliexpress，登录之后请刷新该页面') == -1 && json['msg'].search('失败') == -1) {
+                            html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span></div>' + html;
+                        } else if (json['status'] == 'success' && json['msg'].search('请先打开aliexpress产品搜索') == -1 && json['msg'].search('失败') == -1) {
+                            html = '<div class="opt_success"><span>' + num + '、' + json['msg'] + '</span></div>' + html;
+                        } else {
+                            html = '<div class="opt_error"><span>' + num + '、' + json['msg'] + '</span> 采集url:<a href="' + json['data']['source_url'] + '" target="_blank">' + json['data']['source_url'] + '</a></div>' + html;
+                        }
+                        $('#return_msg').html(html);
+                        if (json['msg'].search('请先登录aliexpress，登录之后请刷新该页面') != -1) {
+                            window.open('https://login.aliexpress.com');
+                        }
+                        if (json['msg'].search('请先打开aliexpress产品搜索') != -1) {
+                            location.href='https://www.aliexpress.com/wholesale?catId=0&initiative_id=SB_20190626075902&SearchText=shoes';
+//                            window.open('https://www.aliexpress.com/wholesale?catId=0&initiative_id=SB_20190626075902&SearchText=shoes&sleep_verify=1');
+                            alert(json['msg']);
+                        }
+                        num++;
+                    }
+                });
+            });
+        });
+
+    </script>
+</div>

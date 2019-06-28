@@ -1,0 +1,136 @@
+<style>
+    .opt_success{
+        border-radius: 5px;
+        background: #76d573;
+        color:#fff;
+        padding: 10px;
+        margin-bottom: 5px;
+    }
+    .opt_success span{
+        margin-right: 10px;
+    }
+    .opt_error{
+        border-radius: 5px;
+        background: #f74d4d;
+        color:#fff;
+        padding: 10px;
+        margin-bottom: 5px;
+    }
+    .opt_error span{
+        margin-right: 10px;
+    }
+    #source_url{
+        margin-top: 10px;
+        width: 900px;
+        height:100px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+</style>
+<div  class="ui container segment">
+    <div class="ui grid">
+        <div class="eight wide column">
+            <span>定时器开关 : </span>
+            <input id="switch" type="hidden" value="<?= $json['switch'] ?>" />
+            <div class="ui buttons">
+                <button class="ui button switch_btn<?php echo $json['switch'] == 1 ? ' blue' : ''; ?>" id="switch1" onclick="btn_switch(1);">开</button>
+                <button class="ui button switch_btn<?php echo $json['switch'] == 0 ? ' blue' : ''; ?>" id="switch0" onclick="btn_switch(0);">关</button>
+            </div>
+        </div>
+        <div class="eight wide column">
+            <span>周期(秒) : </span>
+            <div class="ui input focus">
+                <input type="text" placeholder="3秒" id="time" value="<?= $json['time'] ?>">
+            </div>
+        </div>
+        <div class="eight wide column">
+            <span>每次进程数 : </span>
+            <div class="ui input focus">
+                <input type="text" placeholder="3" id="queueNum" value="<?= $json['queueNum'] ?>">
+            </div>
+        </div>
+        <div class="eight wide column">
+            <span>价格公式 : </span>
+            <div class="ui input focus">
+                <input type="text" placeholder="x*2.2+1" id="priceFormula" value="<?= $json['priceFormula'] ?>">
+            </div>
+        </div>
+        <div class="sixteen wide column">
+            <div class="ui form">
+                <div class="field">
+                    <span>账号 ： </span>
+                    <textarea id="users" rows="4" style="width:90%;display: inline-block;"><?= json_encode($json['users'], JSON_UNESCAPED_UNICODE) ?></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="sixteen wide column">
+            <button class="ui primary button" onclick="setUpdate();">保 存</button>
+        </div>
+    </div>
+    <div style="color:red;margin: 5px;">还有<span id="queueTotalNum" style="margin: 3px;"></span>条队列<span id="queueList"></span></div>
+
+    <div class="ui divider"></div>
+    <div><a class="ui primary button" href='/setting/clear?date=<?= date('Y-m-d', strtotime('-1 months')) ?>' target='_blank'>清理一个月以前的商品和图片</a></div>
+    <script>
+        $(function () {
+//            $('#time,#queueNum,#priceFormula,#users').change(function () {
+//                setUpdate();
+//            });
+            setCount();
+        });
+        var t0 = new Date().getTime();
+        function btn_switch(d) {
+            var t1 = new Date().getTime();
+            if (t1 - t0 < 1000) {
+                return false;
+            }
+            t0 = t1;
+            $('#switch').val(d);
+            $('.switch_btn').removeClass('blue');
+            $('#switch' + d).addClass('blue');
+            setUpdate();
+        }
+        function setUpdate() {
+            var sw = $('#switch').val();
+            var t = $('#time').val();
+            var queueNum = $('#queueNum').val();
+            var priceFormula = $('#priceFormula').val();
+            console.log(priceFormula);
+            var users = $('#users').val();
+            $.ajax({
+                url: '/setting/setUpdate',
+                type: 'GET',
+                async: false,
+                dataType: 'json',
+                data: {sw: sw, t: t, queueNum: queueNum, priceFormula: priceFormula, users: users},
+                success: function (json) {
+                    console.log(json);
+                    alert(json['msg']);
+                    if (json['status'] == 'success') {
+                        if (sw == 1 && json['run'] == 0) {
+                            $.get('/setting/queue');
+                        }
+                    }
+                }
+            });
+        }
+        function setCount() {
+            $.ajax({
+                url: '/setting/getQueueCount',
+                type: 'GET',
+                dataType: 'json',
+                success: function (json) {
+                    if (json['status'] == 'success') {
+                        $('#queueTotalNum').text(json['data']);
+                        var html = '';
+                        $.each(json['list'], function (k, v) {
+                            html += ' 、【 ' + (v['contents'] == null ? '其他' : v['contents']) + ' ' + v['num'] + ' 队列】';
+                        });
+                        $('#queueList').text(html);
+                    }
+                    setTimeout('setCount()', 3000);
+                }
+            });
+        }
+    </script>
+</div>

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 AddDefaultCharset UTF-8
 
 <IfModule mod_rewrite.c>
@@ -5,4 +6,10 @@ AddDefaultCharset UTF-8
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^(.*)$ index.php?_url=/$1 [QSA,L]
+=======
+<IfModule mod_rewrite.c>
+	RewriteEngine on
+	RewriteRule  ^$ public/    [L]
+	RewriteRule  (.*) public/$1 [L]
+>>>>>>> 2c5992720da03a2fcb13b43b4ed4be54979d88d4
 </IfModule>
