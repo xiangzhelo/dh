@@ -266,25 +266,26 @@ class CollectionController extends ControllerBase {
             }
         }
         $sUrl = strpos($url, '?') ? $url . '&page=' . $p : $url . '?page=' . $p;
-        $proxy_ip = $this->getProxyIp($proxy_ip);
-        $ret = $this->getContent($sUrl, $proxy_ip);
-        if ($ret['status'] == 'error') {
-            $proxy_ip = $this->getProxyIp($proxy_ip, true);
+        for ($i = 0; $i < 5; $i++) {
+            $proxy_ip = $this->getProxyIp($proxy_ip);
             $ret = $this->getContent($sUrl, $proxy_ip);
             if ($ret['status'] == 'error') {
-                return $ret['msg'];
+                $proxy_ip = $this->getProxyIp($proxy_ip, true);
+                $ret = $this->getContent($sUrl, $proxy_ip);
+                if ($ret['status'] == 'error') {
+                    return $ret['msg'];
+                }
+            }
+            $output = $ret['data'];
+            if (strpos($output, 'Location:') !== false) {
+                $sUrl = CommonFun::getLocationUrl($output);
+                if (!$sUrl) {
+                    return '失败';
+                }
+            } else {
+                break;
             }
         }
-        $output = $ret['data'];
-//        for ($i = 0; $i < 5; $i++) {
-//            var_dump($output);
-//            exit();
-//            if (strpos($output, 'Location:') !== false) {
-//                $sUrl = CommonFun::getLocationUrl($output);
-//            } else {
-//                break;
-//            }
-//        }
         $webData = CommonFun::getMultiRunParams($output);
         $dom = new \Lib\Vendor\HtmlDom();
         $html = $dom->load($output);
@@ -301,7 +302,6 @@ class CollectionController extends ControllerBase {
                 $queue->save();
                 $num++;
             }
-
             $nUrl = true;
         } else if (!empty($html->find('#list-items li .img a,.list-items li .img a,.items-list li .img a'))) {
             foreach ($html->find('#list-items li .img a,.list-items li .img a,.items-list li .img a') as $a) {
