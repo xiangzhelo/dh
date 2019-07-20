@@ -269,6 +269,10 @@ class CollectionController extends ControllerBase {
         if (!empty($html->find('#list-items li .img a,.list-items li .img a,.items-list li .img a'))) {
             foreach ($html->find('#list-items li .img a,.list-items li .img a,.items-list li .img a') as $a) {
                 $href = $a->href;
+                preg_match('/\/([0-9]+)\.html/', $href, $arr);
+                if (count($arr) > 0) {
+                    $href = 'https://www.aliexpress.com/item/' . $arr[1] . '.html';
+                }
                 $queueUrl = MY_DOMAIN . '/collection/hand?source_url=' . urlencode($href) . '&collection_new=1';
                 $queue = new \Queue();
                 $queue->queue_url = $queueUrl;
