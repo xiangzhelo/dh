@@ -56,6 +56,17 @@ class CommonFun {
         }
     }
 
+    public static function getMultiRunParams($html) {
+        preg_match('/window.runParams(\s{0,1})=([\{\s ]+)"abtest(.*)/', $html, $arr);
+        if (isset($arr[0])) {
+            preg_match('/window.runParams(\s{0,1})=([\s ]+)(.*);/', $arr[0], $arr1);
+            if (isset($arr1[3])) {
+                return json_decode($arr1[3], true);
+            }
+        }
+        return [];
+    }
+
     public static function getCookieValueByKey($cookie, $key) {
         preg_match('/' . $key . '=([^;]+);/i', $cookie, $arr);
         if (isset($arr[1])) {

@@ -257,6 +257,7 @@ class CollectionController extends ControllerBase {
 
     public function multiHand($proxy_ip, $url, $page, $p = 1) {
         $msg = '';
+        $sUrl = strpos($url, '?') ? $url . '&page=' . $p : $url . '?page=' . $p;
         $proxy_ip = $this->getProxyIp($proxy_ip);
         $ret = $this->getContent($url, $proxy_ip);
         if ($ret['status'] == 'error') {
@@ -267,16 +268,13 @@ class CollectionController extends ControllerBase {
             }
         }
         $output = $ret['data'];
+        $webData = CommonFun::getMultiRunParams($output);
         $dom = new \Lib\Vendor\HtmlDom();
         $html = $dom->load($output);
         $num = 0;
-        if (!empty($html->find('#list-items li .img a,.list-items li .img a,.items-list li .img a'))) {
-            foreach ($html->find('#list-items li .img a,.list-items li .img a,.items-list li .img a') as $a) {
-                $href = $a->href;
-                preg_match('/\/([0-9]+)\.html/', $href, $arr);
-                if (count($arr) > 0) {
-                    $href = 'https://www.aliexpress.com/item/' . $arr[1] . '.html';
-                }
+        if (!empty($webData['items'])) {
+            foreach ($webData['items'] as $a) {
+                $href = 'https://www.aliexpress.com/item/' . $a['productId'] . '.html';
                 $queueUrl = MY_DOMAIN . '/collection/hand?source_url=' . urlencode($href) . '&collection_new=1';
                 $queue = new \Queue();
                 $queue->queue_url = $queueUrl;
@@ -286,12 +284,13 @@ class CollectionController extends ControllerBase {
                 $queue->save();
                 $num++;
             }
-            $nUrl = 'https:' . str_replace('&amp;', '&', $html->find('.page-next,.ui-pagination-next', 0)->href);
+
+            $nUrl = true;
         }
         $html->clear();
         $msg .= '第' . $p . '页获取' . $num . '商品； ';
-        if ($page > 1 && !empty($nUrl) && $nUrl != false) {
-            $msg .= $this->multiHand($proxy_ip, $nUrl, --$page, ++$p);
+        if ($page > 1 && $nUrl) {
+            $msg .= $this->multiHand($proxy_ip, $url, --$page, ++$p);
         }
         return $msg;
     }
