@@ -68,7 +68,7 @@ class CommonFun {
     }
 
     public static function getLocationUrl($html) {
-        preg_match('/Location:(\s{0,1})=([\s ]+)(.*)/', $html, $arr);
+        preg_match('/Location:(\s{0,1})(.*)/', $html, $arr);
         if (isset($arr[2])) {
             return $arr[2];
         }
