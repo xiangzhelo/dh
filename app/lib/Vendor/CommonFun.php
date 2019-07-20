@@ -66,6 +66,12 @@ class CommonFun {
         }
         return [];
     }
+    
+    public static function getLocationUrl($html){
+        preg_match('/Location:(\s{0,1})=([\s ]+)(.*)/', $html, $arr);
+        var_dump($arr);
+        exit();
+    }
 
     public static function getCookieValueByKey($cookie, $key) {
         preg_match('/' . $key . '=([^;]+);/i', $cookie, $arr);

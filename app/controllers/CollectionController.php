@@ -257,17 +257,34 @@ class CollectionController extends ControllerBase {
 
     public function multiHand($proxy_ip, $url, $page, $p = 1) {
         $msg = '';
+        if (strpos($url, '&page=') !== false) {
+            $url = str_replace('&page=', '&1=', $url);
+        }
+        if (strpos($url, '?')) {
+            if (strpos($url, '&switch_new_app=y') !== false) {
+                $url .= '&switch_new_app=y';
+            }
+        }
         $sUrl = strpos($url, '?') ? $url . '&page=' . $p : $url . '?page=' . $p;
         $proxy_ip = $this->getProxyIp($proxy_ip);
-        $ret = $this->getContent($url, $proxy_ip);
+        $ret = $this->getContent($sUrl, $proxy_ip);
         if ($ret['status'] == 'error') {
             $proxy_ip = $this->getProxyIp($proxy_ip, true);
-            $ret = $this->getContent($url, $proxy_ip);
+            $ret = $this->getContent($sUrl, $proxy_ip);
             if ($ret['status'] == 'error') {
                 return $ret['msg'];
             }
         }
         $output = $ret['data'];
+//        for ($i = 0; $i < 5; $i++) {
+//            var_dump($output);
+//            exit();
+//            if (strpos($output, 'Location:') !== false) {
+//                $sUrl = CommonFun::getLocationUrl($output);
+//            } else {
+//                break;
+//            }
+//        }
         $webData = CommonFun::getMultiRunParams($output);
         $dom = new \Lib\Vendor\HtmlDom();
         $html = $dom->load($output);
@@ -286,6 +303,23 @@ class CollectionController extends ControllerBase {
             }
 
             $nUrl = true;
+        } else if (!empty($html->find('#list-items li .img a,.list-items li .img a,.items-list li .img a'))) {
+            foreach ($html->find('#list-items li .img a,.list-items li .img a,.items-list li .img a') as $a) {
+                $href = $a->href;
+                preg_match('/\/([0-9]+)\.html/', $href, $arr);
+                if (count($arr) > 0) {
+                    $href = 'https://www.aliexpress.com/item/' . $arr[1] . '.html';
+                }
+                $queueUrl = MY_DOMAIN . '/collection/hand?source_url=' . urlencode($href) . '&collection_new=1';
+                $queue = new \Queue();
+                $queue->queue_url = $queueUrl;
+                $queue->status = 0;
+                $queue->createtime = date('Y-m-d H:i:s');
+                $queue->contents = '产品采集';
+                $queue->save();
+                $num++;
+            }
+            $nUrl = 'https:' . str_replace('&amp;', '&', $html->find('.page-next,.ui-pagination-next', 0)->href);
         }
         $html->clear();
         $msg .= '第' . $p . '页获取' . $num . '商品； ';
