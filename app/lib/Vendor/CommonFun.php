@@ -70,7 +70,7 @@ class CommonFun {
     public static function getLocationUrl($html) {
         preg_match('/Location:(\s{0,1})(.*)/', $html, $arr);
         if (isset($arr[2])) {
-            return $arr[2];
+            return preg_replace('/\s/', '', $arr[2]);
         }
         return false;
     }
