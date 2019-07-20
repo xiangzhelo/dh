@@ -27,6 +27,10 @@ class CollectionController extends ControllerBase {
         if (strpos($source_url, 'http') === false) {
             $source_url = 'http:' . $source_url;
         }
+        preg_match('/\/([0-9]+)\.html/', $source_url, $arr);
+        if (count($arr) > 0) {
+            $source_url = 'https://www.aliexpress.com/item/' . $arr[1] . '.html';
+        }
         if (strpos($source_url, '/store/product/') !== false) {
             $source_url = str_replace('/store/product/', '/item/', $source_url);
             $source_url = preg_replace('/[0-9]+_/', '', $source_url);
