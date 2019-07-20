@@ -105,13 +105,13 @@ class CommonFun {
             $data = [
                 '产品id' => $webData['actionModule']['productId'],
                 '产品标题' => $webData['titleModule']['subject'],
-                '价格' => $webData['priceModule']['maxActivityAmount']['value'],
+                '价格' => isset($webData['priceModule']['maxActivityAmount']) ? $webData['priceModule']['maxActivityAmount']['value'] : $webData['priceModule']['maxAmount']['value'],
                 '原价' => $webData['priceModule']['minAmount']['value'] . '-' . $webData['priceModule']['maxAmount']['value'], //$html->find('.product-price-main .p-del-price-detail .p-price', 0)->plaintext,
-                '特价' => $webData['priceModule']['minActivityAmount']['value'] . '-' . $webData['priceModule']['maxActivityAmount']['value'], //$html->find('.product-price-main .p-current-price .p-price', 0)->plaintext,
-                '价格单位' => $webData['priceModule']['maxActivityAmount']['currency'], //$html->find('.p-symbol', 0)->outertext,//->getAttribute('itemprop'),
+                '特价' => isset($webData['priceModule']['minActivityAmount']) ? $webData['priceModule']['minActivityAmount']['value'] . '-' . $webData['priceModule']['maxActivityAmount']['value'] : $webData['priceModule']['minAmount']['value'] . '-' . $webData['priceModule']['maxAmount']['value'], //$html->find('.product-price-main .p-current-price .p-price', 0)->plaintext,
+                '价格单位' => $webData['priceModule']['minAmount']['currency'], //$html->find('.p-symbol', 0)->outertext,//->getAttribute('itemprop'),
                 '描述' => $webData['pageModule']['description'],
                 '关键词' => explode(',', $webData['pageModule']['keywords']), //
-                '折扣' => $webData['priceModule']['discount'],
+                '折扣' => isset($webData['priceModule']['discount']) ? $webData['priceModule']['discount'] : 100,
                 '计量单位' => strtolower($webData['priceModule']['oddUnitName'])
             ];
             $data['运费'] = self::getFreight($data['产品id']);
@@ -119,7 +119,7 @@ class CommonFun {
             if (!empty($webData['crossLinkModule'])) {
                 foreach ($webData['crossLinkModule']['breadCrumbPathList'] as $k => $v) {
                     if ($k > 1) {
-                        $data['categories'][] = strtolower(trim($v['name'],' '));
+                        $data['categories'][] = htmlentities(strtolower(trim($v['name'], ' ')));
                     }
                 }
             }
