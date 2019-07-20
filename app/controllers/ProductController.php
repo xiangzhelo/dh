@@ -1191,15 +1191,15 @@ class ProductController extends ControllerBase {
         $modelHtml = '';
         if (isset($getRelModelPage['relModelRespList']) && count($getRelModelPage['relModelRespList']) > 0) {
             $num = 0;
-            $modelHtml.='<p>';
+            $modelHtml .= '<p>';
             foreach ($getRelModelPage['relModelRespList'] as $v) {
-                $modelHtml.='<img data-relateproduct="' . $v['relModelId'] . '" style="cursor:pointer;" class="j-relatedproduct" src="//css.dhresource.com/seller/product/relatedproducts/image/productmodel001.png" />';
+                $modelHtml .= '<img data-relateproduct="' . $v['relModelId'] . '" style="cursor:pointer;" class="j-relatedproduct" src="//css.dhresource.com/seller/product/relatedproducts/image/productmodel001.png" />';
                 $num++;
                 if ($num > 2) {
                     break;
                 }
             }
-            $modelHtml.='</p>';
+            $modelHtml .= '</p>';
         }
         $data['productname'] = mb_substr(htmlspecialchars_decode($sourceData['产品标题']), 0, 140, 'utf-8');
         $data['forEditOldCatePubid'] = $data['catepubid'];
@@ -1213,7 +1213,7 @@ class ProductController extends ControllerBase {
         $data['sizelen'] = '30.0'; //$sourceData['长'];
         $data['sizewidth'] = '20.0'; //$sourceData['宽'];
         $data['sizeheight'] = '10.0'; //$sourceData['高'];
-        $data['productweight'] = is_array($sourceData['重量']) ? $sourceData['重量'][0] : $sourceData['重量'];
+        $data['productweight'] = isset($sourceData['重量']) ? (is_array($sourceData['重量']) ? $sourceData['重量'][0] : $sourceData['重量']) : 0.5;
         $data['setdiscounttype'] = '1'; //统一设置价格 ：2  分别设置：1
         $data['noSpecPrice'] = '200';         //?????'
         $data['packquantity'] = '1';  //???
