@@ -161,7 +161,7 @@ class CommonFun {
                             '颜色' => strtolower(str_replace(' ', '', empty($a['propertyValueName']) ? $a['propertyValueDisplayName'] : $a['skuPropertyTips'])),
                             '图片' => $a['skuPropertyImagePath'],
                             '颜色id' => $id,
-                            '颜色orign' => empty($a['propertyValueName']) ? $a['propertyValueDisplayName'] : $a['skuPropertyTips'],
+                            '颜色orign' => empty($a['propertyValueDisplayName']) ? $a['propertyValueDisplayName'] : $a['skuPropertyTips'],
                         ];
                         $ids[] = $id;
                     }
@@ -171,7 +171,7 @@ class CommonFun {
                 } elseif (strpos($type, 'size') !== false || strpos($type, 'quantity') !== false) {
                     foreach ($item['skuPropertyValues'] as $a) {
                         $id = $a['propertyValueId'];
-                        $sizes[$id] = $a['propertyValueName'];
+                        $sizes[$id] = $a['propertyValueDisplayName'];
                         $ids[] = $id;
                     }
                     $skuAttr[] = $ids;
@@ -180,7 +180,7 @@ class CommonFun {
                 } elseif (strpos($type, 'height') !== false || strpos($type, 'capacity') !== false) {
                     foreach ($item['skuPropertyValues'] as $a) {
                         $id = $a['propertyValueId'];
-                        $height[$id] = $a['propertyValueName'];
+                        $height[$id] = $a['propertyValueDisplayName'];
                         $ids[] = $id;
                     }
                     $skuAttr[] = $ids;
@@ -189,7 +189,7 @@ class CommonFun {
                 } elseif (strpos($type, 'material') !== false) {
                     foreach ($item['skuPropertyValues'] as $a) {
                         $id = $a['propertyValueId'];
-                        $material[$id] = $a['propertyValueName'];
+                        $material[$id] = $a['propertyValueDisplayName'];
                         $ids[] = $id;
                     }
                     $skuAttr[] = $ids;
@@ -203,7 +203,7 @@ class CommonFun {
                 } elseif (strpos($type, 'length') !== false || strpos($type, 'type') !== false) {
                     foreach ($item['skuPropertyValues'] as $a) {
                         $id = $a['propertyValueId'];
-                        $length[$id] = $a['propertyValueName'];
+                        $length[$id] = $a['propertyValueDisplayName'];
                         $ids[] = $id;
                     }
                     $skuAttr[] = $ids;
