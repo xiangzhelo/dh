@@ -57,14 +57,22 @@ class CommonFun {
     }
 
     public static function getMultiRunParams($html) {
+        $data = [];
+        $html = str_replace('window.runParams = {};', '', $html);
         preg_match('/window.runParams(\s{0,1})=([\{\s ]+)"abtest(.*)/', $html, $arr);
         if (isset($arr[0])) {
             preg_match('/window.runParams(\s{0,1})=([\s ]+)(.*);/', $arr[0], $arr1);
             if (isset($arr1[3])) {
-                return json_decode($arr1[3], true);
+                $data = json_decode($arr1[3], true);
             }
         }
-        return [];
+        if (!$data) {
+            preg_match('/window.runParams(\s{0,1})=([\s ]+)(.*);/', $html, $arr);
+            if (isset($arr[3])) {
+                $data = json_decode($arr[3], true);
+            }
+        }
+        return $data;
     }
 
     public static function getLocationUrl($html) {
