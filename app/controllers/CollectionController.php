@@ -290,6 +290,7 @@ class CollectionController extends ControllerBase {
         $dom = new \Lib\Vendor\HtmlDom();
         $html = $dom->load($output);
         $num = 0;
+        $nUrl = false;
         if (!empty($webData['items'])) {
             foreach ($webData['items'] as $a) {
                 $href = 'https://www.aliexpress.com/item/' . $a['productId'] . '.html';
