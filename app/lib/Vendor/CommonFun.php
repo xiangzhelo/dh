@@ -159,64 +159,66 @@ class CommonFun {
             $skuAttr = [];
             $postion = ['size' => 99, 'from' => 99, 'color' => 99, 'height' => 99, 'material' => 99, 'length' => 99];
             $pos = 0;
-            foreach ($webData['skuModule']['productSKUPropertyList'] as $item) {
-                $type = strtolower($item['skuPropertyName']);
-                $ids = [];
-                if (strpos($type, 'color') !== false || strpos($type, 'kleur') !== false) {
-                    foreach ($item['skuPropertyValues'] as $a) {
-                        $id = $a['propertyValueId'];
-                        $colorList[$id] = [
-                            '颜色' => strtolower(str_replace(' ', '', empty($a['propertyValueName']) ? $a['propertyValueDisplayName'] : $a['skuPropertyTips'])),
-                            '图片' => $a['skuPropertyImagePath'],
-                            '颜色id' => $id,
-                            '颜色orign' => empty($a['propertyValueDisplayName']) ? $a['propertyValueDisplayName'] : $a['skuPropertyTips'],
-                        ];
-                        $ids[] = $id;
+            if (isset($webData['skuModule']['productSKUPropertyList']) && $webData['skuModule']['productSKUPropertyList']) {
+                foreach ($webData['skuModule']['productSKUPropertyList'] as $item) {
+                    $type = strtolower($item['skuPropertyName']);
+                    $ids = [];
+                    if (strpos($type, 'color') !== false || strpos($type, 'kleur') !== false) {
+                        foreach ($item['skuPropertyValues'] as $a) {
+                            $id = $a['propertyValueId'];
+                            $colorList[$id] = [
+                                '颜色' => strtolower(str_replace(' ', '', empty($a['propertyValueName']) ? $a['propertyValueDisplayName'] : $a['skuPropertyTips'])),
+                                '图片' => isset($a['skuPropertyImagePath']) ? $a['skuPropertyImagePath'] : '',
+                                '颜色id' => $id,
+                                '颜色orign' => empty($a['propertyValueDisplayName']) ? $a['propertyValueDisplayName'] : $a['skuPropertyTips'],
+                            ];
+                            $ids[] = $id;
+                        }
+                        $skuAttr[] = $ids;
+                        $postion['color'] = $pos;
+                        $pos++;
+                    } elseif (strpos($type, 'size') !== false || strpos($type, 'quantity') !== false) {
+                        foreach ($item['skuPropertyValues'] as $a) {
+                            $id = $a['propertyValueId'];
+                            $sizes[$id] = $a['propertyValueDisplayName'];
+                            $ids[] = $id;
+                        }
+                        $skuAttr[] = $ids;
+                        $postion['size'] = $pos;
+                        $pos++;
+                    } elseif (strpos($type, 'height') !== false || strpos($type, 'capacity') !== false) {
+                        foreach ($item['skuPropertyValues'] as $a) {
+                            $id = $a['propertyValueId'];
+                            $height[$id] = $a['propertyValueDisplayName'];
+                            $ids[] = $id;
+                        }
+                        $skuAttr[] = $ids;
+                        $postion['height'] = $pos;
+                        $pos++;
+                    } elseif (strpos($type, 'material') !== false) {
+                        foreach ($item['skuPropertyValues'] as $a) {
+                            $id = $a['propertyValueId'];
+                            $material[$id] = $a['propertyValueDisplayName'];
+                            $ids[] = $id;
+                        }
+                        $skuAttr[] = $ids;
+                        $postion['material'] = $pos;
+                        $pos++;
+                    } elseif (strpos($type, 'ships from') !== false) {
+                        $ids[] = 201336100;
+                        $skuAttr[] = $ids;
+                        $postion['from'] = $pos;
+                        $pos++;
+                    } elseif (strpos($type, 'length') !== false || strpos($type, 'type') !== false) {
+                        foreach ($item['skuPropertyValues'] as $a) {
+                            $id = $a['propertyValueId'];
+                            $length[$id] = $a['propertyValueDisplayName'];
+                            $ids[] = $id;
+                        }
+                        $skuAttr[] = $ids;
+                        $postion['length'] = $pos;
+                        $pos++;
                     }
-                    $skuAttr[] = $ids;
-                    $postion['color'] = $pos;
-                    $pos++;
-                } elseif (strpos($type, 'size') !== false || strpos($type, 'quantity') !== false) {
-                    foreach ($item['skuPropertyValues'] as $a) {
-                        $id = $a['propertyValueId'];
-                        $sizes[$id] = $a['propertyValueDisplayName'];
-                        $ids[] = $id;
-                    }
-                    $skuAttr[] = $ids;
-                    $postion['size'] = $pos;
-                    $pos++;
-                } elseif (strpos($type, 'height') !== false || strpos($type, 'capacity') !== false) {
-                    foreach ($item['skuPropertyValues'] as $a) {
-                        $id = $a['propertyValueId'];
-                        $height[$id] = $a['propertyValueDisplayName'];
-                        $ids[] = $id;
-                    }
-                    $skuAttr[] = $ids;
-                    $postion['height'] = $pos;
-                    $pos++;
-                } elseif (strpos($type, 'material') !== false) {
-                    foreach ($item['skuPropertyValues'] as $a) {
-                        $id = $a['propertyValueId'];
-                        $material[$id] = $a['propertyValueDisplayName'];
-                        $ids[] = $id;
-                    }
-                    $skuAttr[] = $ids;
-                    $postion['material'] = $pos;
-                    $pos++;
-                } elseif (strpos($type, 'ships from') !== false) {
-                    $ids[] = 201336100;
-                    $skuAttr[] = $ids;
-                    $postion['from'] = $pos;
-                    $pos++;
-                } elseif (strpos($type, 'length') !== false || strpos($type, 'type') !== false) {
-                    foreach ($item['skuPropertyValues'] as $a) {
-                        $id = $a['propertyValueId'];
-                        $length[$id] = $a['propertyValueDisplayName'];
-                        $ids[] = $id;
-                    }
-                    $skuAttr[] = $ids;
-                    $postion['length'] = $pos;
-                    $pos++;
                 }
             }
             $skuProducts = $webData['skuModule']['skuPriceList'];
