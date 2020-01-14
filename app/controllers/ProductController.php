@@ -313,7 +313,7 @@ class ProductController extends ControllerBase {
         if (in_array($model->dh_category_id, ['004002002', '004002008', '004002011', '004006001', '004006008', '004007001', '004007008', '143103113102', '143103113107', '024029008', '024020005007', '024020005007', '024034008001', '024034007002', '024023002005', '024023002004', '024023001015', '024023001020', '024023001005', '024023001013', '024023001003', '024023001001', '004006001', '004006008', '135005006'])) {
             $this->addProductInfo($productInfo, '颜色');
         }
-        if (in_array($model->dh_category_id, ['024020004003', '006003112'])) {
+        if (in_array($model->dh_category_id, ['024020004003'])) {
             $productInfo['color'] = $productInfo['颜色'];
             unset($productInfo['颜色']);
             $this->addProductInfo($productInfo, '颜色');
