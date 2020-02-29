@@ -119,10 +119,73 @@ class CommonFun {
         return $ip1id . "." . $ip2id . "." . $ip3id . "." . $ip4id;
     }
 
+    public static function esCookie() {
+        if (strpos($_SERVER['PATH'], '\Users\94946')) {
+            return shell_exec('python 2.py');
+        } else {
+            return shell_exec('C:\Users\Administrator\AppData\Local\Programs\Python\Python37\python.exe 1.py');
+        }
+    }
+
+    private static function getProxyIp($proxy_ip, $fresh = false) {
+        if ($fresh || empty($proxy_ip)) {
+            $curl = new \Lib\Vendor\Curl();
+            $jsonStr = $curl->get('http://api.wandoudl.com/api/ip?app_key=bf469f3d992360983d96acfe4a00a257&pack=0&num=1&xy=1&type=2&lb=\r\n&mr=1');
+            $json = json_decode($jsonStr, true);
+            setcookie('AUTH_PROXY_IP', $json['data'][0]['ip'] . ':' . $json['data'][0]['port'], strtotime($json['data'][0]['expire_time']));
+            return $json['data'][0]['ip'] . ':' . $json['data'][0]['port'];
+        } else {
+            return $proxy_ip;
+        }
+    }
+
+    private static function getContent($url, $proxy_ip) {
+        $cookie = self::esCookie(); //@file_get_contents(PUL_PATH . 'ali_cookie.txt');
+        $curl = new \Lib\Vendor\Curl();
+        $username = "963205006@qq.com"; // 您的用户名邮箱963205006@qq.com 密码Lk123456
+        $password = "Lk123456"; // 您的密码
+        $basic = base64_encode($username . ":" . $password);
+        $output = $curl->getHead($url, ["Proxy-Authorization: Basic " . $basic], 60, $cookie, $proxy_ip);
+        if (strpos($output, 'Please slide to verify') !== false) {
+            return ['status' => 'error', 'msg' => '请先打开aliexpress产品搜索，验证之后请刷新该页面同时1分钟后再开始采集'];
+        }
+        if (strpos($output, 'Location: https://login.aliexpress.com') !== false) {
+            return ['status' => 'error', 'msg' => '请先登录aliexpress，登录之后请刷新该页面同时1分钟后再开始采集'];
+        }
+        if ($output == false) {
+            return ['status' => 'error', 'msg' => '失败'];
+        }
+        return ['status' => 'success', 'msg' => '', 'data' => $output];
+    }
+
     public static function hand($url) {
         try {
+            $proxy_ip = '';
+            if (isset($_COOKIE['AUTH_PROXY_IP'])) {
+                $proxy_ip = $_COOKIE['AUTH_PROXY_IP'];
+            }
+            for ($i = 0; $i < 3; $i++) {
+                $proxy_ip = self::getProxyIp($proxy_ip);
+                $ret = self::getContent($url, $proxy_ip);
+                if ($ret['status'] == 'error') {
+                    $proxy_ip = self::getProxyIp($proxy_ip, true);
+                    $ret = self::getContent($url, $proxy_ip);
+                    if ($ret['status'] == 'error') {
+                        throw new Exception($ret['msg']);
+                    }
+                }
+                $contents = $ret['data'];
+                if (strpos($contents, 'Location:') !== false) {
+                    $url = self::getLocationUrl($contents);
+                    if (!$url) {
+                        throw new Exception('错误');
+                    }
+                } else {
+                    break;
+                }
+            }
             $curl = new Curl();
-            $contents = $curl->get($url, ['X-FORWARDED-FOR:' . self::Rand_IP(), 'CLIENT-IP:' . self::Rand_IP()]);
+//            $contents = $curl->get($url, ['X-FORWARDED-FOR:' . self::Rand_IP(), 'CLIENT-IP:' . self::Rand_IP()]);
             if ($contents == false) {
                 throw new Exception('错误');
             }
