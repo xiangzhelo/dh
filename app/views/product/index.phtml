@@ -27,7 +27,8 @@
         <button class="ui primary button" style="margin-top:10px;" onclick="addProducts(0);">批量草稿</button><button class="ui primary button" style="margin-top:10px;" onclick="addProducts(1);">批量添加</button><span id="cateSelect"></span><button class="ui primary button" style="margin-top:10px;" onclick="searchCateSelect();">搜索</button>
         默认选择分组 ： <select class="groupSelectBox" id="groupid" onchange="setGroup();" style="height: 30px;"></select>
     <?php } else { ?>
-        <button class="ui primary button" style="margin-top:10px;" onclick="refreshProducts();">批量刷新</button>
+        <span id="cateSelect"></span>
+        <button class="ui primary button" style="margin-top:10px;" onclick="refreshProducts();">批量刷新，如有设置左侧分类，则同时设置为该分类</button>
     <?php } ?>
     <button class="ui primary button" style="margin-top:10px;" onclick="delProducts();">批量删除</button>
     <table class="ui celled striped table">
@@ -81,30 +82,30 @@
         //每边显示inum个页码
         $inum = 3;
         if ($pages->current - $inum > 1)
-            $list_pages.=" <a class='ui button disabled'>...</a> ";
+            $list_pages .= " <a class='ui button disabled'>...</a> ";
         //左边的页码  
         for ($i = $inum; $i >= 1; $i--) {
             $p = $pages->current - $i;
             if ($p < 1) {
                 continue;
             } else {
-                $list_pages.=" <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
+                $list_pages .= " <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
             }
         }
 
         //当前页码  
-        $list_pages.=" <a class='ui button active' href='{$base_url}&page={$pages->current}'>{$pages->current}</a>";
+        $list_pages .= " <a class='ui button active' href='{$base_url}&page={$pages->current}'>{$pages->current}</a>";
         //右边页码  
         for ($i = 1; $i <= $inum; $i++) {
             $p = $pages->current + $i;
             if ($p > $pages->total_pages) {
                 break;
             } else {
-                $list_pages.=" <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
+                $list_pages .= " <a class='ui button' href='{$base_url}&page={$p}'>{$p}</a> ";
             }
         }
         if ($pages->current + $inum < $pages->total_pages)
-            $list_pages.=" <a class='ui button disabled'>...</a> ";
+            $list_pages .= " <a class='ui button disabled'>...</a> ";
         $pages_str = $first . $prev . $list_pages . $next . $last;
         if ($pages->total_pages > 1) {
             echo $pages_str;
@@ -217,6 +218,11 @@
 
     function refreshProducts() {
         var ids = [];
+        var len = $('#cateSelect').find('.cateSelectBox').length;
+        var cateId = $('.cateSelectBox').eq(len - 1).val();
+        if (cateId == '' && len > 1) {
+            cateId = $('.cateSelectBox').eq(len - 2).val();
+        }
         $('.ids:checked').each(function () {
             var id = $(this).val();
             ids.push(id);
@@ -225,7 +231,7 @@
             url: '/lexicon/addRefreshQueues',
             type: 'POST',
             dataType: 'json',
-            data: {ids: ids},
+            data: {ids: ids, catePubId: cateId},
             success: function (json) {
                 alert(json['msg']);
                 $('.ids').prop('checked', false);

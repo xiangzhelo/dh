@@ -177,24 +177,46 @@ class LexiconController extends ControllerBase {
 
     public function wordsMatchAction() {
         set_time_limit(0);
-        $source_product_id = $this->request->get('source_product_id', 'string');
-        $product = \Product::findFirst([
-                    'conditions' => 'source_product_id=:source_product_id:',
-                    'bind' => [
-                        'source_product_id' => $source_product_id
-                    ]
-        ]);
-        $product_data = json_decode($product->product_data, true);
-        if (empty($product_data['categories'])) {
-            $this->echoJson(['status' => 'success', 'msg' => '分类错误,不存在分类']);
+        $source_product_id = $this->request->get('source_product_id', 'string', '');
+        $id = $this->request->get('id', 'string', '');
+        $catePubId = $this->request->get('catePubId', 'string', '');
+        $categoryModel = null;
+        if ($catePubId) {
+            $categoryModel = \Categories::findFirst([
+                        'conditions' => 'dh_category_id=:dh_category_id:',
+                        'bind' => [
+                            'dh_category_id' => $catePubId
+                        ]
+            ]);
         }
-        $mainCategory = trim(strtolower(implode(' > ', $product_data['categories'])));
-        $categoryModel = \Categories::findFirst([
-                    'conditions' => 'orign_category=:orign_category:',
-                    'bind' => [
-                        'orign_category' => $mainCategory
-                    ]
-        ]);
+        if ($source_product_id) {
+            $product = \Product::findFirst([
+                        'conditions' => 'source_product_id=:source_product_id:',
+                        'bind' => [
+                            'source_product_id' => $source_product_id
+                        ]
+            ]);
+        } else {
+            $product = \Product::findFirst([
+                        'conditions' => 'id=:id:',
+                        'bind' => [
+                            'id' => $id
+                        ]
+            ]);
+        }
+        $product_data = json_decode($product->product_data, true);
+        if (!$categoryModel) {
+            if (empty($product_data['categories'])) {
+                $this->echoJson(['status' => 'success', 'msg' => '分类错误,不存在分类']);
+            }
+            $mainCategory = trim(strtolower(implode(' > ', $product_data['categories'])));
+            $categoryModel = \Categories::findFirst([
+                        'conditions' => 'orign_category=:orign_category:',
+                        'bind' => [
+                            'orign_category' => $mainCategory
+                        ]
+            ]);
+        }
         if ($categoryModel == false || $categoryModel->status != 200) {
             $this->echoJson(['status' => 'success', 'msg' => '分类错误,分类未匹配']);
         }
@@ -210,7 +232,7 @@ class LexiconController extends ControllerBase {
         $cate142 = ['142006003', '142006005', '142006001', '142003011', '142003003003']; //母婴用品
         $cate135 = ['135005002', '135010002', '135010003', '135005006']; //手机和手机附件
         $cate008 = ['008178']; //消费类电子  '008002', MP4变成了音箱所以取消
-        $cate140 = [ '140005', '140002001']; //时尚配件
+        $cate140 = ['140005', '140002001']; //时尚配件
         $cate004 = ['004002002', '004002008', '004002011', '004006001', '004006008', '004007001', '004007008']; //珠宝
         $cate005 = ['005002', '005001']; //表
         $cate143 = ['143103113102', '143103113107', '143106001']; //汽配
@@ -602,7 +624,7 @@ class LexiconController extends ControllerBase {
         $need_attribute = '';
         $ret = $this->colorSize($tran_product_data['属性'], $needJson);
         if ($ret == false) {
-            $need_attribute.=' 产品规格|';
+            $need_attribute .= ' 产品规格|';
             $status = 0;
         }
         foreach ($needJson as $v) {
@@ -650,7 +672,7 @@ class LexiconController extends ControllerBase {
         $tran_product_data['需要匹配'] = $needArr;
         if (count($product_data['产品图片']) < 3) {
             $status = '0';
-            $need_attribute.='产品图片太少';
+            $need_attribute .= '产品图片太少';
         }
         if ($status == '1') {
             $tran_product_data['匹配情况'] = '匹配成功';
@@ -785,7 +807,7 @@ class LexiconController extends ControllerBase {
                             $important = 1;
                         }
                         if ($wordModel->status == 200) {
-                            $dest_words .=',' . $wordModel->dest_words;
+                            $dest_words .= ',' . $wordModel->dest_words;
                         }
                         $wordModel->important = $important;
                         $wordModel->save();
@@ -1319,7 +1341,7 @@ class LexiconController extends ControllerBase {
             'conditions' => 'status=0'
         ];
         if (!empty($key)) {
-            $q['conditions'].=' and orign_words like "%' . $key . '%"';
+            $q['conditions'] .= ' and orign_words like "%' . $key . '%"';
         }
         $words = \Words::find($q);
         $num = 0;
@@ -1460,6 +1482,18 @@ class LexiconController extends ControllerBase {
         if (empty($ids)) {
             $this->echoJson(['status' => 'error', 'msg' => '刷新产品数为空']);
         }
+        $catePubId = $this->request->get('catePubId', 'string', '');
+        if ($catePubId) {
+            $cate = \Categories::findFirst([
+                        'conditions' => 'dh_category_id=:dh_category_id:',
+                        'bind' => [
+                            'dh_category_id' => $catePubId
+                        ]
+            ]);
+            if (!$cate) {
+                $this->echoJson(['status' => 'error', 'msg' => '分类未匹配']);
+            }
+        }
         $list = \Product::find([
                     'conditions' => 'id in ({ids:array})',
                     'bind' => [
@@ -1469,7 +1503,7 @@ class LexiconController extends ControllerBase {
         $eNum = 0;
         $sNum = 0;
         foreach ($list as $item) {
-            $queueUrl = MY_DOMAIN . '/lexicon/wordsMatch?source_product_id=' . $item->source_product_id;
+            $queueUrl = MY_DOMAIN . '/lexicon/wordsMatch?source_product_id=' . $item->source_product_id . '&catePubId=' . $catePubId;
             $queue = new \Queue();
             $queue->queue_url = $queueUrl;
             $queue->status = 0;
